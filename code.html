@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>Modern Code Storage - Light Mode</title>
+    <link rel="icon" type="image/png" href="1.png">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&display=swap" rel="stylesheet">
+
+    <style>
+        /* ---------------------------------
+           MODERN LIGHT MODE STYLES (Blue Accent)
+           --------------------------------- */
+        :root {
+            --bg-primary: #f4f4f4;
+            /* Main Background (Luar Kertas) */
+            --bg-secondary: #ffffff;
+            /* Sidebar/Header */
+            --editor-bg: #ffffff;
+            /* Editor Background -> Putih Bersih */
+            --editor-text: #000000;
+            /* Editor Text -> Hitam */
+            --text-primary: #1e1e1e;
+            /* Main Text Sidebar */
+            --text-secondary: #6c757d;
+            /* Subtle Text/Icons */
+            --accent-color: #007bff;
+            /* Blue (Aksen Utama) */
+            --error-color: #dc3545;
+            /* Red for Delete */
+            --border-color: #dee2e6;
+            /* Subtle border -> Light gray */
+            --hover-bg: rgba(0, 123, 255, 0.1);
+            /* Blue hover (10% opacity) */
+            --success-color: #28a745;
+            /* Green for success/download */
+            --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --font-code: "Roboto Mono", "Consolas", "Monaco", monospace;
+            --radius: 6px;
+        }
+
+        html,
+        body {
+            margin: 0;
+            height: 100%;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-ui);
+            font-size: 14px;
+        }
+
+        .app {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* ---------------------------------
+           SIDEBAR
+           --------------------------------- */
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            box-sizing: border-box;
+            overflow-y: auto;
+            flex-shrink: 0;
+            z-index: 50;
+
+            scrollbar-width: thin;
+            scrollbar-color: #ccc var(--bg-secondary);
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background-color: #ccc;
+            border-radius: 4px;
+        }
+
+
+        /* ---------------------------------
+           EDITOR / MAIN AREA (Wrapper)
+           --------------------------------- */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 10px 15px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            min-height: 40px;
+            box-sizing: border-box;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        /* Tombol toggle sidebar untuk mobile */
+        #toggleSidebarBtn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--accent-color);
+            font-size: 18px;
+            padding: 5px;
+            cursor: pointer;
+        }
+
+
+        /* Kontainer editor yang memungkinkan scroll dan pemusatan */
+        .editor {
+            flex: 1;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 30px;
+            overflow-y: auto;
+            background: var(--bg-primary);
+        }
+
+        /* ---------------------------------
+           KERTAS DOKUMEN (contenteditable DIV) -> CODE EDITOR STYLES
+           --------------------------------- */
+        #codeArea {
+            width: 100%;
+            max-width: 100%;
+            height: auto;
+            min-height: 100%;
+            box-sizing: border-box;
+            border: 1px solid var(--border-color);
+            /* Tambahkan border di light mode */
+
+            font-family: var(--font-code);
+            font-size: 14px;
+            line-height: 1.5;
+            background: var(--editor-bg);
+            color: var(--editor-text);
+
+            padding: 20px;
+            border-radius: var(--radius);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            /* Shadow ringan */
+            outline: none;
+
+            text-align: left;
+            white-space: pre-wrap;
+        }
+
+        /* Placeholder untuk contenteditable div (saat kosong) */
+        #codeArea:empty:before {
+            content: attr(placeholder);
+            color: var(--text-secondary);
+            opacity: 0.8;
+            pointer-events: none;
+            display: block;
+        }
+
+
+        /* --- Stylings Lanjutan Sidebar dan Tombol --- */
+
+        .brand {
+            font-size: 16px;
+            font-weight: 600;
+            padding: 12px 10px;
+            color: var(--accent-color);
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .tree {
+            font-size: 13px;
+            padding: 5px 0;
+        }
+
+        .item-wrapper {
+            position: relative;
+        }
+
+        .item {
+            padding: 4px 10px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            line-height: 1.5;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+
+        .item.selected {
+            background: var(--hover-bg);
+            outline: 1px solid var(--accent-color);
+        }
+
+        .item:not(.selected):hover {
+            background: var(--hover-bg);
+        }
+
+        .item i {
+            color: var(--text-secondary);
+            width: 14px;
+            text-align: center;
+            transition: color 0.2s;
+        }
+
+        .item.selected i {
+            color: var(--accent-color);
+        }
+
+        .item .name {
+            flex: 1;
+            user-select: none;
+            padding: 2px 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .item .name[contenteditable="true"] {
+            background: #e9ecef;
+            border: 1px solid var(--accent-color);
+            padding: 1px 4px;
+            margin: -1px 0;
+            border-radius: 3px;
+            outline: none;
+            color: var(--accent-color);
+        }
+
+        .children {
+            margin-left: 12px;
+            border-left: 1px dashed var(--border-color);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            margin-left: auto;
+        }
+
+        .filename {
+            font-weight: 500;
+            color: var(--text-primary);
+            flex-grow: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* PENTING: Gaya Soft Icon Button untuk Header */
+        .action-btn {
+            padding: 8px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-sizing: border-box;
+
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            border-radius: var(--radius);
+            transition: background 0.2s, box-shadow 0.2s, transform 0.1s, border-color 0.2s;
+            font-size: 16px;
+            flex-shrink: 0;
+
+            background: rgba(0, 0, 0, 0.03);
+            /* Latar belakang sangat tipis */
+            color: var(--text-primary);
+        }
+
+        .action-btn:active {
+            transform: scale(0.95);
+        }
+        
+        /* NEW: Gaya untuk Tombol Preview */
+        .preview-btn {
+            background: rgba(102, 16, 242, 0.1);
+            /* Indigo/Purple 10% */
+            color: #6f42c1;
+            /* Indigo/Purple Main */
+        }
+
+        .preview-btn:hover:not(:disabled) {
+            background: rgba(102, 16, 242, 0.2);
+            border-color: #6f42c1;
+        }
+
+        .save-btn {
+            background: rgba(0, 123, 255, 0.1);
+            color: var(--accent-color);
+        }
+
+        .save-btn:hover:not(:disabled) {
+            background: rgba(0, 123, 255, 0.2);
+            border-color: var(--accent-color);
+        }
+
+        .download-btn {
+            background: rgba(40, 167, 69, 0.1);
+            color: var(--success-color);
+        }
+
+        .download-btn:hover:not(:disabled) {
+            background: rgba(40, 167, 69, 0.2);
+            border-color: var(--success-color);
+        }
+
+        .save-btn:disabled,
+        .download-btn:disabled,
+        .preview-btn:disabled {
+            background: #f8f9fa;
+            color: var(--text-secondary);
+            cursor: not-allowed;
+            box-shadow: none;
+            border-color: #e9ecef;
+        }
+
+        /* Context Menu Styles */
+        #contextMenu {
+            position: fixed;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            z-index: 2000;
+            display: none;
+            padding: 5px 0;
+            min-width: 180px;
+        }
+
+        .context-item {
+            padding: 8px 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .context-item:hover {
+            background: var(--hover-bg);
+            color: var(--accent-color);
+        }
+
+        .context-item i {
+            color: var(--text-secondary);
+            width: 16px;
+            transition: color 0.2s;
+        }
+
+        .context-item:hover i {
+            color: var(--accent-color);
+        }
+
+        .context-item.delete-action:hover {
+            color: var(--error-color);
+        }
+
+        .context-item.delete-action:hover i {
+            color: var(--error-color);
+        }
+
+        /* Separator di Context Menu */
+        .context-separator {
+            height: 1px;
+            background: var(--border-color);
+            margin: 5px 0;
+        }
+
+        /* Popup confirm (Modern Modal) */
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            /* Transparansi lebih sedikit */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            display: none;
+            backdrop-filter: blur(2px);
+            transition: opacity 0.3s;
+        }
+
+        .popup {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 25px;
+            width: 90%;
+            max-width: 350px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            transform: scale(0.95);
+            opacity: 0;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
+        }
+
+        .popup-overlay[aria-hidden="false"] .popup {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        .popup p {
+            margin-bottom: 20px;
+            font-size: 15px;
+            color: var(--text-primary);
+        }
+
+        .popup-actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .popup-actions button {
+            padding: 10px 18px;
+            border: none;
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        .popup-actions button:active {
+            transform: scale(0.98);
+        }
+
+        #popupYes {
+            background: var(--error-color);
+            color: #ffffff;
+        }
+
+        #popupYes:hover {
+            background: #c82333;
+        }
+
+        #popupNo {
+            background: var(--border-color);
+            color: var(--text-primary);
+        }
+
+        #popupNo:hover {
+            background: #c6c8ca;
+        }
+
+        /* Toast (Modern Notification) */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--accent-color);
+            color: #ffffff;
+            /* Teks putih di Light Mode Toast */
+            padding: 10px 15px;
+            border-radius: var(--radius);
+            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2);
+            display: none;
+            z-index: 2000;
+            font-size: 14px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.3s, transform 0.3s;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ---------------------------------
+           RESPONSIVENESS (MOBILE STYLES)
+           --------------------------------- */
+        @media (max-width: 768px) {
+
+            .app {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100vh;
+                width: 80%;
+                max-width: 300px;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease-in-out;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+                box-shadow: 4px 0 10px rgba(0, 0, 0, 0.2);
+            }
+
+            #toggleSidebarBtn {
+                display: block;
+            }
+
+            .header {
+                padding: 10px;
+            }
+
+            .header-actions {
+                gap: 5px;
+            }
+
+            .editor {
+                padding: 15px;
+            }
+
+            #codeArea {
+                padding: 20px;
+                min-height: calc(100vh - 100px);
+            }
+
+            .action-btn {
+                width: 36px;
+                height: 36px;
+                padding: 5px;
+                font-size: 14px;
+            }
+
+            .toast {
+                left: 50%;
+                right: auto;
+                transform: translateX(-50%) translateY(20px);
+                bottom: 10px;
+                text-align: center;
+                width: 80%;
+                max-width: 300px;
+            }
+
+            .toast.show {
+                transform: translateX(-50%) translateY(0);
+            }
+
+            .sidebar-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.1);
+                z-index: 40;
+                display: none;
+            }
+
+            .sidebar.open~.sidebar-overlay {
+                display: block;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">Penyimpanan Kode Modern</div>
+            <div id="tree" class="tree" aria-label="Explorer tree"></div>
+        </aside>
+
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <main class="main">
+            <div class="header">
+                <button id="toggleSidebarBtn" type="button" aria-label="Toggle Sidebar"><i class="fas fa-bars"></i></button>
+
+                <div class="filename" id="fileName"><i class="fas fa-info-circle"></i> Pilih file untuk mulai mengedit</div>
+                <div class="header-actions">
+                    <button class="action-btn preview-btn" id="previewBtn" type="button" disabled title="Preview (Ctrl+Q)">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="action-btn download-btn" id="downloadBtn" type="button" disabled title="Download">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <button class="action-btn save-btn" id="saveBtn" type="button" disabled title="Simpan"><i class="fas fa-save"></i></button>
+                </div>
+            </div>
+            <div class="editor">
+                <div id="codeArea" contenteditable="false" placeholder="Pilih file dari sidebar untuk mulai mengedit. Klik kanan di sidebar untuk menambah folder/file." role="textbox" aria-multiline="true" spellcheck="false"></div>
+            </div>
+        </main>
+    </div>
+
+    <div id="contextMenu"></div>
+
+    <div class="popup-overlay" id="popupOverlay" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="popup">
+            <p id="popupMsg">Apakah Anda yakin ingin menghapus item ini?</p>
+            <div class="popup-actions">
+                <button id="popupNo" type="button">Batal</button>
+                <button id="popupYes" type="button">Ya, Hapus</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">Berhasil disimpan!</div>
+
+    <script>
+        // --- FIREBASE INITIALIZATION ---
+        const firebaseConfig = {
+            // Config Firebase Realtime Database
+            apiKey: "AIzaSyCba6M_spBXvuG91Zn-XWJ4bSTX6vNcST0",
+            authDomain: "index-68220.firebaseapp.com",
+            databaseURL: "https://index-68220-default-rtdb.firebaseio.com",
+            projectId: "index-68220",
+            storageBucket: "index-68220.firebasestorage.app",
+            messagingSenderId: "633087068802",
+            appId: "1:633087068802:web:f8aa1f2ef9c00b99d1429b",
+            measurementId: "G-2VQCRFJQCM"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // LOKASI ROOT BARU UNTUK PENYIMPANAN KODE
+        const DB_ROOT = "code_storage";
+
+        // --- DOM ELEMENTS ---
+        const treeEl = document.getElementById("tree");
+        const codeArea = document.getElementById("codeArea");
+        const fileNameEl = document.getElementById("fileName");
+        const saveBtn = document.getElementById("saveBtn");
+        const downloadBtn = document.getElementById("downloadBtn");
+        const previewBtn = document.getElementById("previewBtn"); // NEW: elemen tombol preview
+        const toast = document.getElementById("toast");
+        const popupOverlay = document.getElementById("popupOverlay");
+        const popupMsg = document.getElementById("popupMsg");
+        const popupYes = document.getElementById("popupYes");
+        const popupNo = document.getElementById("popupNo");
+        const contextMenu = document.getElementById('contextMenu');
+
+        // Elemen baru untuk mobile
+        const sidebar = document.getElementById('sidebar');
+        const toggleSidebarBtn = document.getElementById('toggleSidebarBtn');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+        // --- GLOBAL VARIABLES ---
+        let currentFilePath = null;
+        let currentFileName = null;
+        let popupAction = null;
+        const expandedFolders = {};
+        let renamingElement = null;
+        let treeDataCache = {};
+
+
+        // --- UTILITY FUNCTIONS ---
+
+        /**
+         * Tampilkan pesan notifikasi toast.
+         * @param {string} msg - Pesan yang akan ditampilkan.
+         * @param {number} [ms=2000] - Durasi notifikasi (dalam milidetik).
+         */
+        function showToast(msg, ms = 2000) {
+            toast.textContent = msg;
+            toast.style.display = "block";
+            setTimeout(() => toast.classList.add('show'), 10);
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.style.display = "none", 300);
+            }, ms);
+        }
+
+        /**
+         * Tampilkan pop-up konfirmasi.
+         * @param {string} msg - Pesan yang akan ditampilkan.
+         * @param {Function} action - Fungsi yang dijalankan saat 'Yes' diklik.
+         */
+        function showPopup(msg, action) {
+            popupMsg.textContent = msg;
+            popupOverlay.style.display = "flex";
+            setTimeout(() => popupOverlay.setAttribute("aria-hidden", "false"), 10);
+
+            popupAction = action;
+            popupNo.focus();
+        }
+
+        /**
+         * Tutup pop-up konfirmasi.
+         */
+        function closePopup() {
+            popupOverlay.setAttribute("aria-hidden", "true");
+            setTimeout(() => {
+                popupOverlay.style.display = "none";
+                popupAction = null;
+            }, 300);
+        }
+
+        // Handler untuk menutup dan menjalankan pop-up
+        popupYes.onclick = () => {
+            if (popupAction) popupAction();
+            closePopup();
+        };
+        popupNo.onclick = closePopup;
+        popupOverlay.onclick = e => {
+            if (e.target === popupOverlay) closePopup();
+        };
+
+        /**
+         * Helper untuk mendapatkan ikon berdasarkan ekstensi file.
+         * @param {string} filename - Nama file.
+         * @returns {string} HTML string ikon Font Awesome.
+         */
+        function getFileIcon(filename) {
+            const lower = filename ? filename.toLowerCase() : "";
+            // Warna ikon kode di light mode
+            if (lower.endsWith(".html") || lower.endsWith(".htm")) return '<i class="fas fa-file-code" style="color:#E34C26;"></i>';
+            if (lower.endsWith(".css")) return '<i class="fab fa-css3-alt" style="color:#1572B6;"></i>';
+            if (lower.endsWith(".js")) return '<i class="fab fa-js-square" style="color:#F7DF1E;"></i>';
+            if (lower.endsWith(".json")) return '<i class="fas fa-file-code" style="color:#6c757d;"></i>';
+            if (lower.endsWith(".md")) return '<i class="fab fa-markdown" style="color:#66BB6A;"></i>';
+            return '<i class="fas fa-file-alt" style="color:var(--text-secondary);"></i>';
+        }
+
+        /**
+         * Mendapatkan MIME Type dari ekstensi.
+         */
+        function getMimeType(extension) {
+            const lowerExt = extension.toLowerCase();
+            switch (lowerExt) {
+                case 'html':
+                case 'htm':
+                    return 'text/html';
+                case 'css':
+                    return 'text/css';
+                case 'js':
+                    return 'text/javascript';
+                case 'json':
+                    return 'application/json';
+                case 'md':
+                    return 'text/markdown';
+                case 'txt':
+                    return 'text/plain';
+                default:
+                    return 'application/octet-stream';
+            }
+        }
+
+        // --- FILE MANAGEMENT FUNCTIONS (Penting) ---
+
+        /**
+         * Menyimpan konten editor saat ini ke Firebase.
+         */
+        function saveFile() {
+            if (!currentFilePath || !currentFileName || saveBtn.disabled) return;
+
+            saveBtn.disabled = true;
+
+            // Ambil konten sebagai teks murni (untuk kode)
+            const content = codeArea.textContent;
+
+            db.ref(DB_ROOT + currentFilePath + "/content").set(content)
+                .then(() => {
+                    showToast("Berhasil disimpan!");
+                    saveBtn.disabled = false;
+                })
+                .catch((err) => {
+                    showToast("Gagal menyimpan!");
+                    console.error("Firebase save error:", err);
+                    saveBtn.disabled = false;
+                });
+        }
+
+        /**
+         * Membuka file yang dipilih, memuat konten ke editor.
+         * @param {string} path - Path Firebase ke file.
+         * @param {object} data - Data file dari Firebase.
+         */
+        function openFile(path, data) {
+            currentFilePath = path;
+            currentFileName = data.name || "untitled";
+            fileNameEl.innerHTML = getFileIcon(currentFileName) + ` ${currentFileName}`;
+
+            downloadBtn.disabled = false;
+            saveBtn.disabled = false;
+            previewBtn.disabled = false; // PERBAIKAN: Aktifkan tombol Preview
+
+            codeArea.setAttribute('contenteditable', 'true');
+            codeArea.textContent = data.content || "";
+            codeArea.focus();
+
+            closeSidebarIfMobile();
+        }
+
+        /**
+         * Mengosongkan editor dan me-reset status.
+         */
+        function clearEditor() {
+            currentFilePath = null;
+            currentFileName = null;
+            fileNameEl.innerHTML = '<i class="fas fa-info-circle"></i> Pilih file untuk mulai mengedit';
+
+            codeArea.textContent = "";
+            codeArea.setAttribute('contenteditable', 'false');
+
+            downloadBtn.disabled = true;
+            saveBtn.disabled = true;
+            previewBtn.disabled = true; // PERBAIKAN: Nonaktifkan tombol Preview
+            document.querySelectorAll('.item.selected').forEach(el => el.classList.remove('selected'));
+        }
+
+
+        // --- DOWNLOAD LOGIC ---
+
+        /**
+         * Memicu unduhan Blob.
+         */
+        function triggerDownload(content, filename, mimeType) {
+            const blob = new Blob([content], {
+                type: mimeType
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        /**
+         * Unduh semua file di level folder.
+         */
+        function downloadFolderMassal(folderData, folderName) {
+            showToast(`Mulai mengunduh file dari folder "${folderName}" secara massal...`, 3000);
+
+            let fileCount = 0;
+
+            if (folderData.children) {
+                for (const key in folderData.children) {
+                    const data = folderData.children[key];
+                    if (!data || data.type === "folder") continue;
+
+                    if (data.type === "file") {
+                        const filename = data.name || "file_tanpa_judul.txt";
+                        const extensionMatch = filename.match(/\.([a-z0-9]+)$/i);
+                        const extension = extensionMatch ? extensionMatch[1] : 'txt';
+                        const mimeType = getMimeType(extension);
+                        const content = data.content || "";
+
+                        triggerDownload(content, filename, mimeType);
+                        fileCount++;
+                    }
+                }
+            }
+
+            if (fileCount > 0) {
+                showToast(`${fileCount} file dari folder "${folderName}" berhasil diunduh.`);
+            } else {
+                showToast(`Tidak ada file di folder "${folderName}" untuk diunduh.`);
+            }
+        }
+
+        /**
+         * Unduh satu item (file atau folder). Memblokir folder jika ada sub-folder.
+         */
+        function downloadItemSingle(path, name, type) {
+            if (type === 'file') {
+                // Jika file sedang dibuka, gunakan konten editor (terbaru)
+                if (currentFilePath === path) {
+                    const extensionMatch = name.match(/\.([a-z0-9]+)$/i);
+                    const extension = extensionMatch ? extensionMatch[1] : 'txt';
+                    const mimeType = getMimeType(extension);
+
+                    triggerDownload(codeArea.textContent, name, mimeType);
+                    showToast(`File "${name}" berhasil diunduh.`);
+                    return;
+                }
+
+                // Jika tidak dibuka, ambil dari DB
+                db.ref(DB_ROOT + path).once("value").then(snap => {
+                    const data = snap.val();
+                    if (data && data.content !== undefined) {
+                        const actualName = data.name || name;
+                        const extensionMatch = actualName.match(/\.([a-z0-9]+)$/i);
+                        const extension = extensionMatch ? extensionMatch[1] : 'txt';
+                        const mimeType = getMimeType(extension);
+
+                        triggerDownload(data.content, actualName, mimeType);
+                        showToast(`File "${actualName}" berhasil diunduh.`);
+                    } else {
+                        showToast("Gagal mengambil konten file!");
+                    }
+                }).catch(() => showToast("Gagal mengambil konten file!"));
+
+            } else if (type === 'folder') {
+                // Logika untuk Folder: Unduh massal, tetapi cek dulu apakah ada sub-folder.
+                db.ref(DB_ROOT + path).once("value").then(snap => {
+                    const folderData = snap.val();
+
+                    if (!folderData || !folderData.children) {
+                        downloadFolderMassal({
+                            children: {}
+                        }, name);
+                        return;
+                    }
+
+                    let hasSubFolders = false;
+                    for (const key in folderData.children) {
+                        const child = folderData.children[key];
+                        if (child && child.type === 'folder') {
+                            hasSubFolders = true;
+                            break;
+                        }
+                    }
+
+                    if (hasSubFolders) {
+                        // BLOKIR unduhan jika ada sub-folder
+                        showToast(`Gagal: Folder "${name}" tidak bisa diunduh karena masih memiliki sub-folder.`, 4000);
+                        return;
+                    }
+
+                    // Jika tidak ada sub-folder, lanjutkan unduhan file
+                    downloadFolderMassal(folderData, name);
+                });
+            }
+        }
+
+        // --- RENAME LOGIC ---
+
+        function startRename(nameEl, path, type) {
+            if (renamingElement) {
+                renamingElement.blur();
+            }
+
+            renamingElement = nameEl;
+
+            nameEl.contentEditable = "true";
+            nameEl.focus();
+
+            const range = document.createRange();
+            range.selectNodeContents(nameEl);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+
+            // Keydown handler untuk Enter/Escape
+            nameEl.onkeydown = e => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    nameEl.blur();
+                    saveRename(nameEl, path, type);
+                }
+                if (e.key === "Escape") {
+                    e.preventDefault();
+                    nameEl.contentEditable = "false";
+                    renamingElement = null;
+                    // Refresh tree agar nama kembali ke nilai lama
+                    db.ref(DB_ROOT).once("value", snap => {
+                        renderTree(snap.val() || {}, treeEl, "");
+                    });
+                }
+            };
+
+            // Blur handler
+            nameEl.onblur = () => {
+                if (nameEl.contentEditable === "true") {
+                    saveRename(nameEl, path, type);
+                }
+            };
+        }
+
+        function saveRename(nameEl, path, type) {
+            const newName = nameEl.innerText.trim() || `Untitled ${type === 'folder' ? 'Folder' : 'File'}`;
+
+            db.ref(DB_ROOT + path + "/name").set(newName).then(() => {
+                nameEl.contentEditable = "false";
+                renamingElement = null;
+                showToast(`${type === 'folder' ? 'Folder' : 'File'} berhasil diubah namanya.`);
+            }).catch(err => {
+                showToast("Gagal mengubah nama!");
+                console.error("Firebase rename error:", err);
+                nameEl.contentEditable = "false";
+                renamingElement = null;
+            });
+        }
+
+
+        // --- TREE RENDERING LOGIC ---
+
+        /**
+         * Comparator untuk sorting alfanumerik (folder di atas file).
+         */
+        function sortItems(a, b) {
+            const nameA = a.name.toLowerCase();
+            const nameB = b.name.toLowerCase();
+
+            // Aturan 1: Folder selalu di atas File
+            if (a.type === 'folder' && b.type === 'file') return -1;
+            if (a.type === 'file' && b.type === 'folder') return 1;
+
+            // Aturan 2: Sorting alfanumerik
+            return nameA.localeCompare(nameB, undefined, {
+                numeric: true,
+                sensitivity: 'base'
+            });
+        }
+
+        function toggleFolder(path, iconEl, childrenEl) {
+            expandedFolders[path] = !expandedFolders[path];
+            const isOpen = expandedFolders[path];
+
+            iconEl.className = isOpen ? "fas fa-folder-open" : "fas fa-folder";
+            // Warna ikon folder di light mode
+            iconEl.style.color = isOpen ? "#007bff" : "#ffc107";
+
+
+            childrenEl.style.display = isOpen ? "block" : "none";
+        }
+
+        /**
+         * Render tree struktur file dari objek data.
+         */
+        function renderTree(obj, parentEl, path = "") {
+            parentEl.innerHTML = "";
+
+            const items = [];
+            for (const key in obj) {
+                if (obj[key]) {
+                    items.push({
+                        key,
+                        data: obj[key],
+                        name: obj[key].name || (obj[key].type === 'folder' ? 'Untitled Folder' : 'untitled')
+                    });
+                }
+            }
+
+            items.sort(sortItems);
+
+            const fragment = document.createDocumentFragment();
+
+            items.forEach(({
+                key,
+                data,
+                name
+            }) => {
+                if (data.type === "folder") {
+                    const folderKeyPath = path + "/" + key;
+                    const isOpen = !!expandedFolders[folderKeyPath];
+
+                    const wrapperEl = document.createElement("div");
+                    wrapperEl.className = "item-wrapper";
+
+                    const itemEl = document.createElement("div");
+                    itemEl.className = "item folder-item";
+                    itemEl.setAttribute('data-path', folderKeyPath);
+                    itemEl.setAttribute('data-type', 'folder');
+
+                    const iconEl = document.createElement('i');
+                    iconEl.className = isOpen ? "fas fa-folder-open" : "fas fa-folder";
+                    iconEl.style.color = "#ffc107"; // Ikon folder kuning di light mode
+
+                    const nameEl = document.createElement("div");
+                    nameEl.className = "name";
+                    nameEl.setAttribute("spellcheck", "false");
+                    nameEl.textContent = name;
+
+                    itemEl.appendChild(iconEl);
+                    itemEl.appendChild(nameEl);
+
+                    itemEl.onclick = () => toggleFolder(folderKeyPath, iconEl, childrenEl);
+
+                    wrapperEl.appendChild(itemEl);
+
+                    const childrenEl = document.createElement("div");
+                    childrenEl.className = "children";
+                    childrenEl.style.display = isOpen ? "block" : "none";
+
+                    if (data.children) {
+                        renderTree(data.children, childrenEl, folderKeyPath + "/children");
+                    }
+
+                    wrapperEl.appendChild(childrenEl);
+                    fragment.appendChild(wrapperEl);
+
+
+                } else if (data.type === "file") {
+                    const itemEl = document.createElement("div");
+                    itemEl.className = "item file-item";
+                    const filePath = path + "/" + key;
+                    itemEl.setAttribute('data-path', filePath);
+                    itemEl.setAttribute('data-type', 'file');
+
+                    if (currentFilePath === filePath) {
+                        itemEl.classList.add('selected');
+                    }
+
+                    const iconEl = document.createElement('span');
+                    iconEl.innerHTML = getFileIcon(name);
+
+                    const nameEl = document.createElement("div");
+                    nameEl.className = "name";
+                    nameEl.setAttribute("spellcheck", "false");
+                    nameEl.textContent = name;
+
+                    itemEl.appendChild(iconEl);
+                    itemEl.appendChild(nameEl);
+
+                    itemEl.onclick = () => {
+                        document.querySelectorAll('.item.selected').forEach(el => el.classList.remove('selected'));
+                        itemEl.classList.add('selected');
+                        openFile(filePath, data);
+                    }
+
+                    fragment.appendChild(itemEl);
+                }
+            });
+            parentEl.appendChild(fragment);
+        }
+
+
+        // --- CONTEXT MENU LOGIC ---
+
+        // Helper untuk membuat item Context Menu baru
+        function createContextItem(iconClass, text, onClick) {
+            const item = document.createElement('div');
+            item.className = 'context-item';
+            item.innerHTML = `<i class="${iconClass}"></i> ${text}`;
+            item.onclick = (ce) => {
+                ce.stopPropagation();
+                contextMenu.style.display = 'none';
+                onClick();
+            };
+            return item;
+        }
+
+        // Helper untuk membuat file baru
+        function createNewFile(parentRef, name, content) {
+            parentRef.push({
+                type: "file",
+                name: name,
+                content: content
+            });
+        }
+
+        // Handler untuk context menu pada sidebar
+        sidebar.addEventListener('contextmenu', function(e) {
+            const itemEl = e.target.closest('.item');
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            contextMenu.innerHTML = '';
+            let targetPath, targetName, targetType;
+
+            const isBrandClick = e.target.closest('.brand');
+
+            let targetRef = db.ref(DB_ROOT);
+            let isRoot = true;
+
+            if (itemEl) {
+                targetPath = itemEl.getAttribute('data-path');
+                targetType = itemEl.getAttribute('data-type');
+                const nameEl = itemEl.querySelector('.name');
+                targetName = nameEl.textContent;
+
+                if (targetType === 'folder') {
+                    targetRef = db.ref(DB_ROOT + targetPath + "/children");
+                    isRoot = false;
+                } else {
+                    const parentPath = targetPath.substring(0, targetPath.lastIndexOf('/'));
+                    targetRef = db.ref(DB_ROOT + parentPath);
+                    isRoot = parentPath === '';
+                }
+            }
+
+            // OPSI TAMBAH
+            contextMenu.appendChild(createContextItem("fas fa-folder-plus", `Tambah Folder${isRoot ? ' (Root)' : ''}`, () => {
+                targetRef.push({
+                    type: "folder",
+                    name: isRoot ? "Folder Baru" : "Sub-Folder Baru",
+                    children: {}
+                });
+                if (!isRoot) expandedFolders[targetPath] = true;
+                closeSidebarIfMobile();
+            }));
+
+            contextMenu.appendChild(createContextItem("fas fa-file-alt", `Tambah File Teks (.txt)`, () => {
+                createNewFile(targetRef, "untitled.txt", "// Tulis atau tempel kode Anda di sini. Ganti ekstensi file ini saat rename.");
+                if (!isRoot) expandedFolders[targetPath] = true;
+                closeSidebarIfMobile();
+            }));
+
+            contextMenu.appendChild(document.createElement('div')).className = 'context-separator';
+
+            // OPSI SPESIFIK ITEM
+            if (itemEl) {
+                // DOWNLOAD
+                contextMenu.appendChild(createContextItem("fas fa-download", `Unduh`, () => downloadItemSingle(targetPath, targetName, targetType)));
+
+                contextMenu.appendChild(document.createElement('div')).className = 'context-separator';
+
+
+                // RENAME
+                const nameEl = itemEl.querySelector('.name');
+                contextMenu.appendChild(createContextItem("fas fa-pen", 'Ubah Nama', () => {
+                    startRename(nameEl, targetPath, targetType);
+                }));
+
+                // DELETE
+                contextMenu.appendChild(createContextItem("fas fa-trash-alt delete-action", 'Hapus', () => {
+                    showPopup(`Yakin ingin menghapus ${targetType === 'folder' ? 'folder' : 'file'} "${targetName}"?`, () => {
+                        db.ref(DB_ROOT + targetPath).remove();
+                        if (currentFilePath === targetPath) {
+                            clearEditor();
+                        }
+                    });
+                }));
+            } else if (isBrandClick) {
+                // Abaikan klik pada elemen .brand, hanya tampilkan opsi root
+                return;
+            }
+
+
+            // Posisi Context Menu (agar tidak terpotong)
+            contextMenu.style.display = 'block';
+            contextMenu.style.opacity = '0';
+            contextMenu.style.top = '0px';
+            contextMenu.style.left = '0px';
+
+            const menuWidth = contextMenu.offsetWidth;
+            const menuHeight = contextMenu.offsetHeight;
+            let x = e.clientX;
+            let y = e.clientY;
+
+            if (x + menuWidth > window.innerWidth) {
+                x = window.innerWidth - menuWidth - 5;
+            }
+
+            if (y + menuHeight > window.innerHeight) {
+                y = y - menuHeight;
+                if (y < 5) {
+                    y = 5;
+                }
+            }
+
+            contextMenu.style.left = x + 'px';
+            contextMenu.style.top = y + 'px';
+            contextMenu.style.opacity = '1';
+        });
+
+        // Close context menu saat klik di luar
+        document.addEventListener('click', () => {
+            contextMenu.style.display = 'none';
+        });
+
+
+        // --- EVENT LISTENERS & MOBILE LOGIC ---
+
+        // Sidebar Mobile
+        toggleSidebarBtn.onclick = () => {
+            sidebar.classList.toggle('open');
+        };
+
+        sidebarOverlay.onclick = () => {
+            sidebar.classList.remove('open');
+        };
+
+        function closeSidebarIfMobile() {
+            if (window.innerWidth <= 768) {
+                sidebar.classList.remove('open');
+            }
+        }
+
+        // Shortcut Save (Ctrl+S atau Cmd+S)
+        document.addEventListener("keydown", (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+                e.preventDefault();
+                saveFile();
+            }
+        });
+
+        // Save button handler
+        saveBtn.onclick = () => saveFile();
+
+        // Download button handler (Header)
+        downloadBtn.onclick = () => {
+            if (!currentFilePath || downloadBtn.disabled) return;
+
+            const name = currentFileName;
+            const content = codeArea.textContent;
+
+            const extensionMatch = name.match(/\.([a-z0-9]+)$/i);
+            const extension = extensionMatch ? extensionMatch[1] : 'txt';
+            const mimeType = getMimeType(extension);
+
+            triggerDownload(content, name, mimeType);
+            showToast(`File "${name}" berhasil diunduh.`);
+        };
+        
+        // PERBAIKAN: Handler untuk tombol Preview (Header)
+        previewBtn.onclick = () => openPreview();
+
+
+        // Editor: Pencegahan Paste Format
+        codeArea.addEventListener('paste', function(e) {
+            e.preventDefault();
+
+            const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+
+            const selection = window.getSelection();
+            if (!selection.rangeCount) return;
+
+            const range = selection.getRangeAt(0);
+
+            range.deleteContents();
+
+            const textNode = document.createTextNode(text);
+            range.insertNode(textNode);
+
+            range.setStartAfter(textNode);
+            range.setEndAfter(textNode);
+            selection.removeAllRanges();
+            selection.addRange(range);
+
+            showToast("Hanya teks murni yang diperbolehkan (Format telah dihapus).");
+        });
+
+
+        // --- FIREBASE LISTENERS ---
+        // Render tree on DB changes
+        db.ref(DB_ROOT).on("value", snap => {
+            treeDataCache = snap.val() || {};
+            renderTree(treeDataCache, treeEl, "");
+        });
+
+        // ---------------------------------
+        // PREVIEW SYSTEM LOGIC
+        // ---------------------------------
+
+        /**
+         * Membuka jendela/tab baru dengan konten dari editor.
+         * Konten akan disajikan sebagai HTML jika ekstensi file adalah .html atau .htm,
+         * jika tidak, konten akan ditampilkan sebagai teks biasa.
+         */
+        function openPreview() {
+            if (!currentFilePath) {
+                showToast("Pilih file terlebih dahulu untuk mem-preview.");
+                return;
+            }
+
+            const content = codeArea.textContent;
+            const filename = currentFileName;
+            const lowerFilename = filename ? filename.toLowerCase() : "";
+
+            let mimeType;
+            let isHtml = false;
+
+            if (lowerFilename.endsWith(".html") || lowerFilename.endsWith(".htm")) {
+                mimeType = 'text/html';
+                isHtml = true;
+            } else {
+                // Untuk file lain, gunakan teks biasa agar konten kode terlihat
+                mimeType = 'text/plain';
+            }
+
+            // Buat Blob dari konten
+            const blob = new Blob([content], {
+                type: mimeType
+            });
+            const url = URL.createObjectURL(blob);
+
+            // Buka jendela/tab baru
+            const previewWindow = window.open(url, '_blank', 'noopener,noreferrer');
+
+            // Jika berhasil dibuka
+            if (previewWindow) {
+                if (isHtml) {
+                    showToast(`Membuka preview HTML untuk "${filename}" di tab baru.`, 3000);
+                } else {
+                    showToast(`Membuka konten teks untuk "${filename}" di tab baru.`, 3000);
+                }
+            } else {
+                showToast("Gagal membuka jendela preview. Pastikan browser Anda mengizinkan pop-up.", 4000);
+            }
+
+            // Penting: Clean up URL object setelah tab ditutup
+            // Namun, karena kita membuka tab baru, browser akan menangani cleanup secara otomatis.
+            // Jika ada kebutuhan untuk menutupnya, bisa ditambahkan event listener pada jendela preview (kompleks untuk cross-origin/pop-up).
+        }
+
+        // ---------------------------------
+        // EVENT LISTENER UNTUK SHORTCUT CTRL+Q
+        // ---------------------------------
+
+        document.addEventListener("keydown", (e) => {
+            // Cek jika (CtrlKey ATAU MetaKey (Cmd di Mac)) DAN Key 'Q'
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "q") {
+                e.preventDefault(); // Mencegah perilaku default browser (misalnya menutup tab)
+                openPreview();
+                // Pastikan tidak mengganggu shortcut Save (Ctrl+S) jika ada
+            }
+
+            // Shortcut Save (Ctrl+S atau Cmd+S)
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+                e.preventDefault();
+                saveFile();
+            }
+            // ... event listener lain yang sudah ada (jika ada)
+        });
+    </script>
+</body>
+
+</html>

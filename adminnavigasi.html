@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Kelola Shortcut</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap">
+    
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+    <script type="module">
+        // Import modul Firebase yang diperlukan
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getDatabase, ref, onValue, push, remove, update } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
+        
+        // --- KONFIGURASI FIREBASE ANDA ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCba6M_spBXvuG91Zn-XWJ4bSTX6vNcST0",
+            authDomain: "index-68220.firebaseapp.com",
+            databaseURL: "https://index-68220-default-rtdb.firebaseio.com",
+            projectId: "index-68220",
+            storageBucket: "index-68220.firebasestorage.app",
+            messagingSenderId: "633087068802",
+            appId: "1:633087068802:web:f8aa1f2ef9c00b99d1429b",
+            measurementId: "G-2VQCRFJQCM"
+        };
+        
+        const SAFE_APP_ID = 'user-shortcuts'; 
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        
+        const shortcutListRef = ref(db, 'artifacts/' + SAFE_APP_ID + '/shortcuts/list');
+
+        let shortcutsData = {};
+        let editingKey = null; 
+        let sortableInstance = null; 
+
+        // --- REALTIME LISTENER ---
+        function startRealtimeListener() {
+            onValue(shortcutListRef, (snapshot) => {
+                shortcutsData = snapshot.val() || {};
+                renderAdminList(shortcutsData);
+                initializeSortable();
+            }, (error) => {
+                console.error("Error membaca data RTDB:", error);
+                document.getElementById('admin-list-container').innerHTML = 
+                    '<p class="error-message">Gagal memuat data dari Firebase. Cek koneksi & aturan database.</p>';
+            });
+        }
+
+        // --- RENDER DAFTAR ADMIN ---
+        function renderAdminList(data) {
+            const listContainer = document.getElementById('admin-list-container');
+            listContainer.innerHTML = '';
+            
+            const keys = Object.keys(data);
+            
+            const sortedKeys = keys.sort((a, b) => {
+                const orderA = data[a].order === undefined ? Infinity : data[a].order;
+                const orderB = data[b].order === undefined ? Infinity : data[b].order;
+                return orderA - orderB;
+            });
+
+            if (sortedKeys.length === 0) {
+                listContainer.innerHTML = '<p class="text-info"><i class="fa-solid fa-bell"></i> Belum ada shortcut. Klik tombol (+) untuk menambah.</p>';
+                return;
+            }
+
+            sortedKeys.forEach(key => {
+                const item = data[key];
+                
+                // Sanitasi data untuk inline onclick
+                const safeName = (item.name || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                const safeUrl = (item.url || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                const safeIcon = (item.icon || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                
+                let iconDisplay = item.icon && item.icon.startsWith('fa-') ? `<i class="${item.icon}"></i>` : (item.icon || '🔗');
+
+                const listItem = document.createElement('div');
+                listItem.className = 'admin-list-item';
+                listItem.setAttribute('data-id', key); 
+
+                listItem.innerHTML = `
+                    <div class="drag-handle" title="Seret untuk atur urutan"><i class="fa-solid fa-grip-vertical"></i></div> 
+                    <div class="admin-item-icon">${iconDisplay}</div>
+                    <div class="admin-item-details">
+                        <span class="admin-item-name">${item.name}</span>
+                        <span class="admin-item-url">${item.url}</span>
+                    </div>
+                    <div class="admin-item-actions">
+                        <button class="edit-button" onclick="editShortcut('${key}', '${safeName}', '${safeUrl}', '${safeIcon}')"><i class="fa-solid fa-pen"></i> Edit</button>
+                        <button class="delete-button" onclick="deleteShortcut('${key}')"><i class="fa-solid fa-trash-can"></i> Hapus</button>
+                    </div>
+                `;
+                listContainer.appendChild(listItem);
+            });
+        }
+        
+        // --- SORTABLEJS LOGIC ---
+        function initializeSortable() {
+            const adminGrid = document.getElementById('admin-list-container');
+            if (sortableInstance) {
+                sortableInstance.destroy();
+            }
+
+            if (adminGrid && Object.keys(shortcutsData).length > 0) {
+                sortableInstance = new Sortable(adminGrid, {
+                    animation: 200,
+                    handle: '.drag-handle', 
+                    // Kelas khusus untuk item saat sedang diseret untuk animasi yang lebih lembut
+                    ghostClass: 'sortable-ghost-style',
+                    dragClass: 'sortable-drag-style',
+                    onEnd: function (evt) {
+                        const newOrder = Array.from(adminGrid.children).map(item => item.getAttribute('data-id'));
+                        updateShortcutOrder(newOrder);
+                    },
+                });
+            }
+        }
+        
+        function updateShortcutOrder(newOrderKeys) {
+            const updates = {};
+            newOrderKeys.forEach((key, index) => {
+                updates[key + '/order'] = index; 
+            });
+
+            update(shortcutListRef, updates)
+                .then(() => console.log("Urutan shortcut berhasil diperbarui."))
+                .catch(error => console.error("Gagal memperbarui urutan:", error));
+        }
+
+        // --- MODAL POPUP LOGIC ---
+        window.openModal = () => {
+             document.getElementById('modal-overlay').classList.add('active');
+        }
+
+        window.closeModal = () => {
+             document.getElementById('modal-overlay').classList.remove('active');
+             resetForm();
+        }
+
+
+        // --- CRUD FUNCTIONS (Global) ---
+        
+        window.addShortcut = () => {
+            const nameInput = document.getElementById('shortcut-name');
+            const urlInput = document.getElementById('shortcut-url');
+            const iconInput = document.getElementById('shortcut-icon');
+
+            const name = nameInput.value.trim();
+            let url = urlInput.value.trim();
+            const icon = iconInput.value.trim() || null;
+
+            if (!name || !url) {
+                alert('Nama dan URL tidak boleh kosong!');
+                return;
+            }
+            
+            if (!url.match(/^[a-zA-Z]+:\/\//)) {
+                url = 'https://' + url; // Default ke HTTPS
+            }
+
+            const shortcutData = { name, url, icon, updated: Date.now() };
+
+            if (editingKey) {
+                const itemRef = ref(db, 'artifacts/' + SAFE_APP_ID + '/shortcuts/list/' + editingKey);
+                
+                update(itemRef, shortcutData)
+                    .then(() => {
+                        // Tidak perlu alert, karena render otomatis
+                        closeModal();
+                    })
+                    .catch(error => console.error("Gagal mengupdate shortcut:", error));
+
+            } else {
+                shortcutData.created = Date.now();
+                
+                const currentKeys = Object.keys(shortcutsData);
+                shortcutData.order = currentKeys.length > 0 ? currentKeys.length : 0; 
+
+                push(shortcutListRef, shortcutData)
+                    .then(() => {
+                        // Tidak perlu alert, karena render otomatis
+                        closeModal();
+                    })
+                    .catch(error => console.error("Gagal menambahkan shortcut:", error));
+            }
+        };
+
+        window.editShortcut = (key, name, url, icon) => {
+            // Un-escape string sebelum ditampilkan
+            document.getElementById('shortcut-name').value = name.replace(/\\'/g, "'").replace(/&quot;/g, '"');
+            document.getElementById('shortcut-url').value = url.replace(/\\'/g, "'").replace(/&quot;/g, '"');
+            document.getElementById('shortcut-icon').value = icon.replace(/\\'/g, "'").replace(/&quot;/g, '"');
+            
+            document.querySelector('.modal-form h2').textContent = 'Ubah Shortcut';
+            document.querySelector('.submit-button').textContent = 'Simpan Perubahan';
+            document.querySelector('.submit-button').classList.add('save-mode');
+            
+            editingKey = key;
+            openModal();
+        };
+
+        window.resetForm = () => {
+            document.getElementById('shortcut-name').value = '';
+            document.getElementById('shortcut-url').value = '';
+            document.getElementById('shortcut-icon').value = '';
+            
+            document.querySelector('.modal-form h2').textContent = 'Tambah Shortcut Baru';
+            document.querySelector('.submit-button').textContent = 'Tambahkan';
+            document.querySelector('.submit-button').classList.remove('save-mode');
+            editingKey = null;
+        };
+
+
+        window.deleteShortcut = (key) => {
+            const name = shortcutsData[key]?.name || 'Shortcut ini';
+            if (confirm(`Anda yakin ingin menghapus ${name}?\nPenghapusan ini permanen!`)) { 
+                remove(ref(db, 'artifacts/' + SAFE_APP_ID + '/shortcuts/list/' + key))
+                    .then(() => console.log('Shortcut berhasil dihapus.'))
+                    .catch(error => console.error("Gagal menghapus shortcut:", error));
+            }
+        }
+
+        // --- INISIALISASI ---
+        window.onload = () => {
+             startRealtimeListener();
+             resetForm();
+        };
+    </script>
+    
+    <style>
+        /* ========================================================== */
+        /* 1. VARIBEL & BASE STYLES (DARK MODE CYAN) */
+        /* ========================================================== */
+        :root {
+            /* Warna Dasar */
+            --color-bg-primary: #191919; 
+            --color-bg-secondary: #2C2C2C; /* Card/Modal Background */
+            --color-text-primary: #E0E0E0; 
+            --color-text-secondary: #A0A0A0; 
+            --color-border: #3A3A3A; 
+
+            /* Aksen Cyan (Modern Teal) */
+            --color-accent: #00BCD4; /* Cyan/Teal Utama */
+            --color-accent-dark: #00A6B9; 
+
+            /* Tombol */
+            --color-button-add: #28a745;
+            --color-button-save: var(--color-accent);
+            --color-button-delete: #F44336; /* Merah Lembut */
+            --color-button-edit: #FFC107;
+            
+            /* Shadow */
+            --shadow-soft: 0 4px 15px rgba(0, 0, 0, 0.4);
+            --shadow-heavy: 0 10px 30px rgba(0, 0, 0, 0.6);
+        }
+
+        /* Base Reset */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            transition: background-color 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+        }
+
+        html, body {
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-bg-primary);
+            color: var(--color-text-primary);
+            line-height: 1.6;
+        }
+
+        .admin-page-container {
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+
+        /* --- Header & Tombol Utama --- */
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding: 0 10px;
+        }
+        .header-section h1 {
+            font-size: 2.2em;
+            color: var(--color-accent);
+            font-weight: 700;
+            margin: 0;
+            padding-bottom: 5px;
+            border-bottom: 2px solid var(--color-accent);
+        }
+
+        .add-fab {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: var(--color-green);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 1.5em;
+            box-shadow: var(--shadow-soft);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .add-fab:hover {
+            background-color: #218838;
+            transform: scale(1.05);
+        }
+
+        /* --- Daftar Shortcut (List) --- */
+        .list-header {
+            font-size: 1.1em;
+            color: var(--color-text-primary);
+            font-weight: 600;
+            margin-bottom: 15px;
+            padding-left: 10px;
+        }
+
+        .admin-list-container {
+            padding-top: 10px;
+        }
+
+        .admin-list-item {
+            display: flex; 
+            align-items: center; 
+            padding: 15px; 
+            margin-bottom: 12px;
+            border-radius: 10px;
+            background-color: var(--color-bg-secondary);
+            box-shadow: var(--shadow-soft);
+            cursor: default;
+        }
+        .admin-list-item:hover {
+            background-color: #353535;
+        }
+
+        .drag-handle {
+            cursor: grab;
+            margin-right: 20px;
+            color: var(--color-text-secondary);
+            font-size: 1.3em;
+            flex-shrink: 0;
+        }
+        
+        .admin-item-icon {
+            font-size: 1.5em;
+            margin-right: 20px;
+            color: var(--color-accent);
+            flex-shrink: 0;
+        }
+        .admin-item-icon i {
+             font-size: 0.9em;
+        }
+
+        .admin-item-details {
+            display: flex; 
+            flex-direction: column; 
+            flex-grow: 1; 
+            min-width: 0;
+        }
+        .admin-item-name {
+            font-weight: 600; 
+            color: var(--color-text-primary);
+        }
+        .admin-item-url {
+            color: var(--color-text-secondary); 
+            font-size: 0.8em;
+            opacity: 0.7;
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            white-space: nowrap;
+        }
+        .admin-item-actions {
+            flex-shrink: 0;
+            margin-left: 20px;
+        }
+        
+        /* Tombol Edit/Hapus */
+        .delete-button, .edit-button {
+            padding: 10px 15px; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 0.9em;
+            margin-left: 10px; 
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .edit-button { background-color: var(--color-blue); color: white; }
+        .edit-button:hover { background-color: #3168c7; }
+        .delete-button { background-color: var(--color-red); color: white; }
+        .delete-button:hover { background-color: #c52929; }
+
+        /* Sortable Styles */
+        .sortable-ghost-style {
+            opacity: 0.2 !important;
+            background-color: var(--color-accent) !important; 
+            transform: scale(0.98);
+        }
+        .sortable-drag-style {
+            background-color: var(--color-accent-dark) !important;
+            box-shadow: var(--shadow-heavy) !important;
+            transform: scale(1.02);
+        }
+        
+        .text-info, .error-message {
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 15px;
+            font-weight: 500;
+        }
+        .text-info {
+            background-color: var(--color-bg-secondary);
+            color: var(--color-text-secondary);
+        }
+        .error-message {
+             background-color: #440000;
+             color: var(--color-red);
+             border: 1px solid var(--color-red);
+        }
+
+        /* ========================================================== */
+        /* 2. MODAL POPUP STYLES */
+        /* ========================================================== */
+
+        #modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-out;
+        }
+        #modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-form {
+            background-color: var(--color-bg-secondary);
+            padding: 35px;
+            border-radius: 15px;
+            box-shadow: var(--shadow-heavy);
+            width: 90%;
+            max-width: 500px;
+            transform: translateY(-50px);
+            transition: transform 0.3s ease-out;
+        }
+        #modal-overlay.active .modal-form {
+            transform: translateY(0);
+        }
+
+        .modal-form h2 {
+            font-size: 1.8em;
+            color: var(--color-accent);
+            margin-top: 0;
+            margin-bottom: 25px;
+            border-bottom: 1px solid var(--color-border);
+            padding-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .modal-form input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--color-border);
+            background-color: var(--color-bg-primary);
+            color: var(--color-text-primary);
+            font-size: 1em;
+        }
+        .modal-form input:focus {
+            border-color: var(--color-accent);
+            box-shadow: 0 0 0 2px rgba(0, 188, 212, 0.4);
+            outline: none;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .modal-actions button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1em;
+        }
+        
+        .close-button {
+            background-color: var(--color-border);
+            color: var(--color-text-primary);
+        }
+        .close-button:hover { background-color: #505050; }
+
+        .submit-button {
+            background-color: var(--color-green);
+            color: white;
+        }
+        .submit-button:hover { background-color: #218838; }
+
+        .submit-button.save-mode {
+            background-color: var(--color-accent);
+        }
+        .submit-button.save-mode:hover {
+            background-color: var(--color-accent-dark);
+        }
+
+
+        /* ========================================================== */
+        /* 3. RESPONSIVE MOBILE */
+        /* ========================================================== */
+        @media screen and (max-width: 768px) {
+            .admin-page-container {
+                margin: 20px auto;
+                padding: 10px;
+            }
+            .header-section {
+                padding: 0 5px;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .header-section h1 {
+                font-size: 1.8em;
+                margin-bottom: 15px;
+            }
+            .add-fab {
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                z-index: 900;
+                width: 55px;
+                height: 55px;
+            }
+            
+            .admin-list-item {
+                flex-wrap: wrap;
+                padding: 15px 10px;
+            }
+            .drag-handle, .admin-item-icon {
+                margin-right: 10px;
+            }
+            .admin-item-details {
+                margin-top: 5px;
+                flex-basis: 100%;
+                order: 1; /* Pindah ke baris baru */
+                margin-left: 0;
+            }
+            .admin-item-url {
+                white-space: normal;
+                word-break: break-all;
+            }
+            .admin-item-actions {
+                width: 100%;
+                justify-content: space-around;
+                display: flex;
+                margin-left: 0;
+                margin-top: 15px;
+                order: 2;
+            }
+            .delete-button, .edit-button {
+                flex-grow: 1;
+                margin: 0 5px;
+                padding: 10px;
+                font-size: 0.9em;
+            }
+            .modal-form {
+                padding: 20px;
+            }
+            .modal-actions {
+                 flex-direction: column-reverse;
+            }
+            .modal-actions button {
+                width: 100%;
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    
+    <div class="admin-page-container">
+        
+        <div class="header-section">
+            <h1>Kelola Shortcut Navigasi 🚀</h1>
+            
+            <button class="add-fab" onclick="openModal()" title="Tambah Shortcut Baru">
+                <i class="fa-solid fa-plus"></i>
+            </button>
+        </div>
+
+        <h3 class="list-header">Daftar Shortcut Aktif (Seret Ikon Grip untuk Mengatur Urutan)</h3>
+        
+        <div id="admin-list-container" class="admin-list-container">
+            <p class="text-info">Memuat daftar shortcut...</p>
+        </div>
+
+    </div>
+
+    <div id="modal-overlay">
+        <div class="modal-form">
+            <h2>Tambah Shortcut Baru</h2>
+            
+            <input type="text" id="shortcut-name" placeholder="Nama Aplikasi (Contoh: Google)" />
+            <input type="text" id="shortcut-url" placeholder="URL Lengkap (Contoh: https://www.google.com)" />
+            <input type="text" id="shortcut-icon" placeholder="Ikon (Contoh: 🚀 atau fa-solid fa-rocket)" /> 
+
+            <div class="modal-actions">
+                <button class="close-button" onclick="closeModal()">Batal</button>
+                <button class="submit-button" onclick="addShortcut()">Tambahkan</button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

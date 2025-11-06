@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Codingin 13 Pro Max - Dark Mode (Realtime Preview Tab)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+    /* 🌙 Perubahan untuk DARK Mode */
+    body {
+        margin: 0;
+        font-family: 'Inter', sans-serif;
+        background: #1f2937; /* Latar belakang gelap (Abu-abu gelap) */
+        color: #f3f4f6; /* Teks terang */
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+    }
+    #main-container {
+        display: flex;
+        flex-grow: 1; 
+        overflow: hidden;
+    }
+    #editor-container {
+        flex: 1; 
+        width: 100%; 
+        height: 100%;
+    }
+
+    /* Toast Notification Styles - Disesuaikan untuk Dark Mode */
+    #toast-notification {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background-color: #374151; /* Abu-abu gelap untuk default */
+        color: #f3f4f6; /* Teks terang */
+        padding: 10px 15px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4); /* Bayangan lebih gelap */
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+        pointer-events: none;
+        z-index: 1000;
+        font-size: 14px;
+    }
+    #toast-notification.show {
+        opacity: 1;
+    }
+    #toast-notification.success {
+        background-color: #10b981; /* Emerald-500 */
+        color: #ffffff;
+    }
+    #toast-notification.error {
+        background-color: #ef4444; /* Red-500 */
+        color: #ffffff;
+    }
+    
+    /* Style untuk toolbar dan tombol preview */
+    #toolbar {
+        height: 40px;
+        background-color: #374151;
+        display: flex;
+        align-items: center;
+        padding: 0 15px;
+        border-bottom: 1px solid #4b5563;
+        justify-content: flex-end; /* Pindahkan ke kanan */
+    }
+    #preview-button {
+        background-color: darkcyan; /* Hijau (Emerald-500) */
+        color: white;
+        border: none;
+        padding: 5px 10px; 
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 13px;
+        transition: background-color 0.2s;
+        display: flex; 
+        align-items: center;
+        justify-content: center;
+        width: 34px; 
+        height: 30px;
+    }
+    #preview-button:hover {
+        background-color: #059669; /* Sedikit lebih gelap saat hover */
+    }
+    #preview-button svg {
+        width: 20px; 
+        height: 20px;
+        fill: currentColor; 
+    }
+</style>
+</head>
+<body>
+
+<div id="toast-notification"></div>
+
+<div id="toolbar">
+    <button id="preview-button" title="Preview di Tab Baru (Ctrl+Q) - Realtime">
+        
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+            <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
+            <path fill-rule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.972 0 9.188 3.226 10.677 7.697.499 1.51.499 3.116 0 4.626-1.489 4.471-5.705 7.697-10.677 7.697-4.973 0-9.189-3.226-10.678-7.697-.499-1.51-.499-3.116 0-4.626zM12 12.75a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" clip-rule="evenodd" />
+        </svg>
+    </button>
+</div>
+
+<div id="main-container">
+    <div id="editor-container">
+        <div id="editor" style="width:100%; height:100%;"></div>
+    </div>
+</div>
+
+<link rel="stylesheet" data-name="vs/editor/editor.main" href="https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs/editor/editor.main.css">
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs/loader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs/editor/editor.main.nls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs/editor/editor.main.js"></script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+
+// --- Firebase ---
+const firebaseConfig = {
+  apiKey: "AIzaSyCba6M_spBXvuG91Zn-XWJ4bSTX6vNcST0",
+  authDomain: "index-68220.firebaseapp.com",
+  databaseURL: "https://index-68220-default-rtdb.firebaseio.com",
+  projectId: "index-68220",
+  storageBucket: "index-68220.firebasestorage.app",
+  messagingSenderId: "633087068802",
+  appId: "1:633087068802:web:f8aa1f2ef9c00b99d1429b",
+  measurementId: "G-2VQCRFJQCM"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// --- Toast Notification Function ---
+function showToast(message, type = 'default') {
+    const toast = document.getElementById('toast-notification');
+    toast.className = 'show';
+    toast.textContent = message;
+
+    if (type === 'success') {
+        toast.classList.add('success');
+    } else if (type === 'error') {
+        toast.classList.add('error');
+    } else {
+        toast.classList.add('default');
+    }
+
+    setTimeout(() => {
+        toast.className = '';
+    }, 3000);
+}
+
+// 🎯 Referensi global untuk jendela preview
+let previewWindow = null; 
+const PREVIEW_WINDOW_NAME = 'CodinginLivePreview';
+
+// --- Preview Function (Buka di Tab Baru atau Update Tab yang Sama) ---
+const runPreviewInNewTab = (code) => {
+    // Hanya buat/perbarui preview jika tab sudah terbuka
+    if (!previewWindow || previewWindow.closed) {
+        // Jika belum dibuka (atau sudah ditutup), kita hanya akan membukanya
+        // saat pengguna menekan tombol (previewAction).
+        return; 
+    }
+    
+    const blob = new Blob([code], { type:'text/html' });
+    const url = URL.createObjectURL(blob);
+    
+    // Karena kita sudah cek di atas, kita tahu previewWindow valid
+    previewWindow.location.replace(url);
+    // Pindahkan fokus ke jendela tersebut (opsional)
+    // previewWindow.focus(); 
+};
+
+// --- Fungsi untuk Membuka Preview Pertama Kali (Dipanggil Tombol/Shortcut) ---
+const previewAction = (editor) => {
+    const code = editor.getValue();
+    const blob = new Blob([code], { type:'text/html' });
+    const url = URL.createObjectURL(blob);
+    
+    // Buka jendela dengan nama yang spesifik untuk pertama kali
+    if (!previewWindow || previewWindow.closed) {
+        previewWindow = window.open(url, PREVIEW_WINDOW_NAME);
+        
+        if (!previewWindow || previewWindow.closed || typeof previewWindow.closed == 'undefined') {
+            showToast('⚠️ Browser memblokir pop-up preview!', 'error');
+            return;
+        }
+        showToast('Membuka preview di tab baru. Real-time update aktif!', 'default');
+    } else {
+         // Jika sudah terbuka, fokuskan saja tab-nya
+        previewWindow.focus();
+        showToast('Preview sudah terbuka, fokuskan tab.', 'default');
+    }
+};
+
+
+// --- Load Monaco setelah window load ---
+window.addEventListener('load', () => {
+    require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs' }});
+    require(['vs/editor/editor.main'], function() {
+        const editor = monaco.editor.create(document.getElementById('editor'), {
+            value: '',
+            language: 'html',
+            theme: 'vs-dark',
+            automaticLayout: true,
+            minimap: { enabled: false },
+            fontSize: 14,
+            tabSize: 4,
+            wordWrap: 'on'
+        });
+
+        // 🟢 PERUBAHAN UTAMA: Real-time Update Listener
+        // Gunakan debounce untuk mencegah pembaruan yang terlalu sering (misalnya setiap kali tombol ditekan)
+        let updateTimeout;
+        editor.onDidChangeModelContent(() => {
+            // Hapus timeout sebelumnya jika ada
+            clearTimeout(updateTimeout);
+            
+            // Set timeout baru: tunggu 300ms setelah user berhenti mengetik
+            updateTimeout = setTimeout(() => {
+                const code = editor.getValue();
+                runPreviewInNewTab(code);
+            }, 300); 
+        });
+
+        // --- Load dari Firebase ---
+        get(ref(db, 'code/editor')).then(snapshot => {
+            let initialCode = '';
+            if(snapshot.exists()) {
+                initialCode = snapshot.val().content;
+                editor.setValue(initialCode);
+            }
+        }).catch(err => console.error("Gagal memuat dari Firebase:", err));
+
+        // --- Auto-save tiap 5 detik ---
+        let lastSavedValue = editor.getValue();
+        setInterval(() => {
+            const currentValue = editor.getValue();
+            if(currentValue !== lastSavedValue) {
+                showToast('Menyimpan...', 'default');
+                set(ref(db, 'code/editor'), { content: currentValue })
+                  .then(() => { showToast('Tersimpan ✅', 'success'); lastSavedValue = currentValue; })
+                  .catch(err => { showToast('Gagal ❌', 'error'); console.error(err); });
+            }
+        }, 5000);
+        
+        // --- Hubungkan Tombol dan Shortcut ke previewAction ---
+        const boundPreviewAction = () => previewAction(editor);
+        
+        // --- Event Listener untuk Tombol Preview ---
+        document.getElementById('preview-button').addEventListener('click', boundPreviewAction);
+
+        // --- Keyboard Shortcut (Ctrl + Q) for Preview ---
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyQ, boundPreviewAction, '');
+
+    });
+});
+</script>
+
+</body>
+</html>
