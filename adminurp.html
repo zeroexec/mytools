@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atur Admin</title>
+    <style>
+        :root {
+            /* Warna Lembut Cyan */
+            --primary-color: #00bcd4; /* Cyan */
+            --secondary-color: #80deea; /* Light Cyan */
+            /* Warna Lembut Dasar */
+            --background-color: #e0f7fa; /* Very Light Cyan Background */
+            --card-color: #ffffff;
+            --text-color: #263238; /* Dark Text */
+            --placeholder-color: #90a4ae;
+            --success-color: #4db6ac; /* Soft Green */
+            --error-color: #ef5350; /* Soft Red */
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: var(--card-color);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            border-top: 5px solid var(--primary-color);
+        }
+        h1 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 1.8em;
+            font-weight: 400; /* Lebih lembut */
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-color);
+            font-size: 0.9em;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            box-sizing: border-box;
+            background-color: #f7f7f7; /* Sedikit abu-abu */
+            color: var(--text-color);
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        input[type="text"]:focus, input[type="password"]:focus {
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.2);
+            outline: none;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+        button:hover {
+            background-color: #0097a7; /* Darker Cyan */
+            box-shadow: 0 4px 10px rgba(0, 188, 212, 0.4);
+        }
+        #message {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+            display: none; /* Sembunyikan secara default */
+        }
+        .message-success {
+            background-color: #e0f2f1;
+            color: var(--success-color);
+            border: 1px solid var(--success-color);
+        }
+        .message-error {
+            background-color: #ffebee;
+            color: var(--error-color);
+            border: 1px solid var(--error-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Pengaturan Akun Admin</h1>
+        <form id="adminSetupForm">
+            <label for="newUsername">Username Baru:</label>
+            <input type="text" id="newUsername" required placeholder="Contoh: adminperpustakaan">
+            
+            <label for="newPassword">Password Baru:</label>
+            <input type="password" id="newPassword" required placeholder="Masukkan password rahasia">
+            
+            <button type="submit">Simpan & Perbarui Admin</button>
+        </form>
+        <p id="message"></p>
+        
+        </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    
+    <script>
+        // Inisialisasi Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBoNUK_1_Hfqa8yHUVZ_TWOc28zkImWPbw",
+            authDomain: "perpustakaandata-c7726.firebaseapp.com",
+            databaseURL: "https://perpustakaandata-c7726-default-rtdb.firebaseio.com",
+            projectId: "perpustakaandata-c7726",
+            storageBucket: "perpustakaandata-c7726.firebasestorage.app",
+            messagingSenderId: "1099434992232",
+            appId: "1:1099434992232:web:90fbc3e17c7a4ae1a051dd"
+        };
+        firebase.initializeApp(firebaseConfig);
+
+        const database = firebase.database();
+        const adminSetupForm = document.getElementById('adminSetupForm');
+        const messageElement = document.getElementById('message');
+
+        const showMessage = (text, type) => {
+            messageElement.textContent = text;
+            messageElement.className = ''; // Reset class
+            messageElement.classList.add(type);
+            messageElement.style.display = 'block';
+        };
+
+        adminSetupForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const newUsername = document.getElementById('newUsername').value;
+            const newPassword = document.getElementById('newPassword').value;
+
+            const adminData = {
+                username: newUsername,
+                password: newPassword
+            };
+
+            // Menyimpan/menimpa data di node 'admin'
+            database.ref('admin').set(adminData)
+                .then(() => {
+                    showMessage('✅ Username dan Password Admin berhasil disimpan!', 'message-success');
+                    adminSetupForm.reset();
+                })
+                .catch((error) => {
+                    showMessage('❌ Gagal menyimpan data admin: ' + error.message, 'message-error');
+                    console.error("Setup Admin Error:", error);
+                });
+        });
+    </script>
+</body>
+</html>
