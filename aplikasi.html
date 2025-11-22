@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expandable Sidebar dengan Loading Keren (Diam) - Dark Mode Cyan</title>
+    <title>Expandable Sidebar Dark Mode - Sidebar Melayang, Aksen Hitam</title>
     
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://www.gstatic.com">
     <link rel="preconnect" href="https://index-68220-default-rtdb.firebaseio.com">
     
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" media="print" onload="this.media='all'">
     
     <script type="module">
@@ -38,16 +37,22 @@
 
         let shortcutsData = {};
         
-        // FUNGSI INI DIPERBARUI untuk menutup overlay
-        function loadContent(url) {
+        // --- FUNGSI loadContent ---
+        function loadContent(url, element) {
             const iframe = document.getElementById('content-frame');
             const overlay = document.getElementById('loading-overlay');
             
             if (iframe && overlay) {
+                document.querySelectorAll('.app-item').forEach(el => el.classList.remove('active'));
+                
+                if (element) {
+                    element.classList.add('active');
+                }
+                
                 overlay.classList.add('visible'); 
                 iframe.src = url; 
             }
-            // Tambahan: Tutup sidebar mobile dan overlay setelah memilih item
+            
             if (window.innerWidth <= 768) {
                 const drawer = document.getElementById('right-sidebar-drawer');
                 const menuButton = document.querySelector('#mobile-header #mobile-menu-button');
@@ -55,7 +60,7 @@
                 
                 drawer.classList.remove('open-mobile');
                 menuButton.classList.remove('active');
-                mobileOverlay.classList.remove('active'); // TUTUP OVERLAY
+                mobileOverlay.classList.remove('active'); 
             }
         }
 
@@ -73,8 +78,8 @@
                 };
                 
                 iframe.onerror = () => {
-                     console.error("Gagal memuat iframe.");
-                     overlay.classList.remove('visible');
+                    console.error("Gagal memuat iframe.");
+                    overlay.classList.remove('visible');
                 };
             }
         }
@@ -91,6 +96,7 @@
             });
         }
         
+        // --- FUNGSI renderShortcuts ---
         function renderShortcuts() {
             const grid = document.getElementById('app-grid');
             grid.innerHTML = ''; 
@@ -105,34 +111,24 @@
 
             if (sortedKeys.length === 0) {
                 grid.innerHTML = '<p class="text-info" style="text-align:center; padding: 20px;">Belum ada shortcut.</p>';
+                loadContent('about:blank', null); 
                 return;
             }
 
             const fragment = document.createDocumentFragment();
 
-            sortedKeys.forEach((key, index) => {
+            sortedKeys.forEach((key) => {
                 const item = shortcutsData[key];
                 const initial = item.name.charAt(0).toUpperCase(); 
                 
-                let iconContent = '';
-                let isFontAwesome = false;
-
-                if (item.icon && item.icon.startsWith('fa-')) {
-                    iconContent = `<i class="fa-fw ${item.icon}"></i>`; 
-                    isFontAwesome = true;
-                } else if (item.icon) {
-                    iconContent = item.icon;
-                } else {
-                    iconContent = initial;
-                }
+                let iconContent = initial; 
+                let isFontAwesome = false; 
 
                 const appItem = document.createElement('a');
                 appItem.href = '#'; 
                 appItem.onclick = (e) => {
                     e.preventDefault();
-                    loadContent(item.url); 
-                    document.querySelectorAll('.app-item').forEach(el => el.classList.remove('active'));
-                    appItem.classList.add('active');
+                    loadContent(item.url, appItem); 
                 };
                 
                 appItem.className = 'app-item';
@@ -149,72 +145,100 @@
             
             if (sortedKeys.length > 0) {
                  const firstItem = shortcutsData[sortedKeys[0]];
-                 loadContent(firstItem.url);
-                 document.querySelector('.app-item').classList.add('active');
+                 const firstAppItemElement = document.querySelector('.app-item');
+                 
+                 if (firstAppItemElement) {
+                     loadContent(firstItem.url, firstAppItemElement);
+                 } else {
+                     loadContent(firstItem.url, null); 
+                 }
             } else {
-                 loadContent('about:blank'); 
+                loadContent('about:blank', null); 
             }
         }
         
-        // --- LOGIKA MOBILE DRAWER (Diperbarui) ---
+        // --- LOGIKA MOBILE DRAWER ---
         function toggleMobileDrawer() {
             const drawer = document.getElementById('right-sidebar-drawer');
             const button = document.querySelector('#mobile-header #mobile-menu-button');
-            const mobileOverlay = document.getElementById('mobile-overlay'); // Ambil overlay
+            const mobileOverlay = document.getElementById('mobile-overlay'); 
             
             drawer.classList.toggle('open-mobile');
             button.classList.toggle('active');
-            mobileOverlay.classList.toggle('active'); // TOGGLE OVERLAY
+            mobileOverlay.classList.toggle('active'); 
         }
 
+        // --- LOGIKA HOVER DESKTOP (Melayang) ---
+        function setupDesktopHover() {
+            const sidebar = document.getElementById('right-sidebar-drawer');
+            const hoverArea = document.getElementById('sidebar-hover-area');
+            
+            if (window.innerWidth > 768 && sidebar && hoverArea) {
+                
+                hoverArea.addEventListener('mouseenter', () => {
+                    sidebar.classList.add('open-desktop');
+                });
+                
+                sidebar.addEventListener('mouseleave', () => {
+                    sidebar.classList.remove('open-desktop');
+                });
+            }
+        }
+        
         window.onload = () => {
              startRealtimeListener();
              setupIframeListener(); 
              
-             // Setup listener untuk tombol mobile di header
              const mobileButton = document.querySelector('#mobile-header #mobile-menu-button');
              if (mobileButton) {
                  mobileButton.onclick = toggleMobileDrawer;
              }
              
-             // Setup listener untuk OVERLAY agar bisa menutup sidebar
              const mobileOverlay = document.getElementById('mobile-overlay');
              if (mobileOverlay) {
                  mobileOverlay.onclick = toggleMobileDrawer; 
              }
+             
+             setupDesktopHover();
         };
 
     </script>
     
     <style>
-        /* Variabel Warna Dark Mode (Aksen Cyan) */
+        /* Variabel Warna DARK Mode (Aksen Hitam) */
         :root {
-            --color-bg-primary: #121212; 
-            --color-bg-sidebar: #1E1E1E; 
-            --color-text-primary: #E0E0E0; 
-            --color-text-secondary: #A0A0A0; 
-            --color-accent-cyan: #00BCD4; 
+            --color-bg-primary: #121212; /* Background gelap utama */
+            --color-bg-sidebar: #1E1E1E; /* Background sidebar sedikit lebih terang */
+            --color-text-primary: #E0E0E0; /* Teks terang */
+            --color-text-secondary: #AAAAAA; /* Teks sekunder */
+            --color-accent: #FFFFFF; /* Putih/Terang sebagai aksen (Kontras dengan Dark Mode) */
             
-            --color-border-dark: #333333; 
-            --color-hover-bg: #2C2C2C; 
-            --color-initial-bg: #333333; 
+            --color-border-light: #333333; /* Border gelap */
+            --color-hover-bg: #292929; /* Hover gelap */
+            --color-initial-bg: #444444; /* Latar belakang inisial gelap */
 
-            /* Ukuran Sidebar */
-            --sidebar-width-slim: 50px; 
+            --sidebar-width-closed: 0; 
             --sidebar-width-expanded: 220px; 
             --icon-size: 30px; 
+            --hover-trigger-width: 5px; 
             --padding-vertical: 5px;
             
-            --shadow-heavy: 0 10px 20px rgba(0, 0, 0, 0.4), 0 6px 6px rgba(0, 0, 0, 0.4);
+            --shadow-heavy: 0 4px 12px rgba(0, 0, 0, 0.5); /* Shadow lebih gelap */
             
-            --mobile-header-height: 55px; /* Ketinggian header mobile */
+            --mobile-header-height: 55px;
         }
 
-        /* === KEYFRAMES UNTUK ANIMASI PULSE BRIGHT RUN === */
+        /* === KEYFRAMES UNTUK ANIMASI LOADING (Aksen Putih) === */
         @keyframes pulse-bright {
             0%, 100% { opacity: 0.7; box-shadow: none; }
-            2% { opacity: 1; box-shadow: 0 0 10px var(--color-accent-cyan); }
-            15% { opacity: 0.7; box-shadow: 0 0 5px rgba(0, 188, 212, 0.5); }
+            2% { opacity: 1; box-shadow: 0 0 10px var(--color-accent); }
+            15% { opacity: 0.7; box-shadow: 0 0 5px rgba(255, 255, 255, 0.5); }
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 1; }
         }
 
         /* Reset dan Main Layout */
@@ -226,24 +250,21 @@
             background-color: var(--color-bg-primary);
             color: var(--color-text-primary);
             line-height: 1.5;
+            overflow: hidden; 
         }
-
-        /* --- START: Kode untuk Sembunyikan Scrollbar --- */
-        /* Untuk Webkit (Chrome, Safari) */
+        
+        /* Scrollbar styling (tetap hidden) */
         #right-sidebar-drawer::-webkit-scrollbar,
         body::-webkit-scrollbar {
             display: none; 
             width: 0;
             height: 0;
         }
-
-        /* Untuk Firefox dan IE/Edge (Non-Webkit) */
         #right-sidebar-drawer,
         body {
-            -ms-overflow-style: none;  /* IE and Edge */
-            scrollbar-width: none;  /* Firefox */
+            -ms-overflow-style: none; 
+            scrollbar-width: none; 
         }
-        /* --- END: Kode untuk Sembunyikan Scrollbar --- */
 
         #app-container {
             display: flex;
@@ -253,13 +274,10 @@
             flex-direction: row; 
         }
         
-        /* --- Mobile Header (Hanya Desktop, disembunyikan) --- */
         #mobile-header {
              display: none; 
         }
 
-        /* --- MOBILE OVERLAY (Desktop) --- */
-        /* Sembunyikan secara default di desktop */
         #mobile-overlay {
             display: none; 
             position: fixed;
@@ -267,24 +285,36 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
+            background-color: rgba(0, 0, 0, 0.7); /* Lebih gelap di Dark Mode */
             z-index: 39; 
             opacity: 0;
             transition: opacity 0.3s ease-in-out;
-            pointer-events: none; /* Nonaktifkan klik saat tersembunyi */
+            pointer-events: none; 
         }
         
-        /* --- Iframe Wrapper (Desktop) --- */
+        /* --- HOVER TRIGGER AREA (Desktop Only) --- */
+        #sidebar-hover-area {
+            display: block; 
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: var(--hover-trigger-width); 
+            height: 100vh;
+            z-index: 50; 
+            cursor: pointer;
+        }
+        
+        /* --- Iframe Wrapper (Tidak Ada Perubahan Lebar) --- */
         #iframe-wrapper {
             flex-grow: 1; 
             height: 100%;
             width: 100%;
-            padding-right: var(--sidebar-width-slim); 
+            padding-right: 0; 
             box-sizing: border-box; 
             position: relative; 
             contain: strict;
         }
-
+        
         #content-frame {
             width: 100%;
             height: 100%;
@@ -292,47 +322,31 @@
             background-color: var(--color-bg-primary); 
         }
         
-        /* --- Sidebar Navigasi (DEKSTOP KANAN) --- */
+        /* --- Sidebar Navigasi (Melayang) --- */
         #right-sidebar-drawer {
             position: fixed; 
             right: 0;
             top: 0;
             height: 100%;
-            width: var(--sidebar-width-slim); 
+            width: var(--sidebar-width-closed); 
             background-color: var(--color-bg-sidebar);
             box-shadow: var(--shadow-heavy); 
-            z-index: 10; 
+            z-index: 45; 
             display: flex;
             flex-direction: column;
             overflow-y: auto;
-            border-left: 1px solid var(--color-border-dark);
+            border-left: 1px solid var(--color-border-light);
             flex-shrink: 0; 
             transition: width 0.3s ease-out; 
             will-change: width;
         }
         
-        #right-sidebar-drawer:hover {
+        #right-sidebar-drawer.open-desktop {
             width: var(--sidebar-width-expanded);
         }
-
-        /* ... (Styling di dalam Sidebar Desktop) ... */
-        .profile-header {
-            padding: 15px 0;
-            display: flex;
-            justify-content: center; 
-            align-items: center;
-            border-bottom: 1px solid var(--color-border-dark);
-            flex-shrink: 0;
-        }
         
-        .profile-image {
-            width: var(--icon-size); 
-            height: var(--icon-size);
-            min-width: var(--icon-size);
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid var(--color-accent-cyan);
-            box-shadow: 0 0 5px rgba(0, 188, 212, 0.5);
+        .profile-header {
+            display: none; 
         }
 
         .app-grid {
@@ -352,8 +366,32 @@
             transition: all 0.2s;
             padding: 5px;
             border-radius: 6px; 
-            width: 100%;
+            width: calc(var(--sidebar-width-expanded) - 10px); 
             box-sizing: border-box;
+            
+            /* --- GARIS LUAR PUTIH untuk yang TIDAK AKTIF (Aksen Dark Mode) --- */
+            border: 1px solid var(--color-accent); 
+            
+            margin-right: calc(-1 * var(--sidebar-width-expanded)); 
+            opacity: 0;
+            transition: margin-right 0.3s ease-out, opacity 0.3s ease-out, background-color 0.2s;
+        }
+        
+        .app-item:hover {
+             background-color: var(--color-hover-bg);
+             border-color: var(--color-accent); 
+        }
+        
+        /* Hapus border untuk item yang sedang aktif */
+        .app-item.active {
+            background-color: var(--color-accent); /* Putih/Terang */
+            color: var(--color-bg-primary); /* Teks gelap */
+            border: 1px solid var(--color-accent); 
+        }
+        
+        #right-sidebar-drawer.open-desktop .app-item {
+            margin-right: 0;
+            opacity: 1;
         }
         
         .app-name {
@@ -368,18 +406,18 @@
             max-width: 0; 
             transition: opacity 0.1s ease-in, max-width 0.3s ease-out;
         }
-        
-        #right-sidebar-drawer:hover .app-name {
+
+        #right-sidebar-drawer.open-desktop .app-name {
             opacity: 1;
             max-width: 100%; 
         }
-        
+
         .app-icon-initial {
             width: var(--icon-size); 
             height: var(--icon-size);
             min-width: var(--icon-size);
             background-color: var(--color-initial-bg); 
-            color: var(--color-accent-cyan); 
+            color: var(--color-accent); 
             border-radius: 6px; 
             display: flex;
             justify-content: center;
@@ -389,44 +427,54 @@
             transition: transform 0.15s ease-out, box-shadow 0.3s, opacity 0.3s; 
             will-change: opacity, box-shadow, transform; 
         }
-
-        /* ... (Animasi Pulse Bright) ... */
-        #right-sidebar-drawer:not(:hover) .app-icon-initial { animation: pulse-bright 2s infinite linear; }
-        #right-sidebar-drawer:not(:hover) .app-item:nth-child(1) .app-icon-initial { animation-delay: 0.0s; } 
-        #right-sidebar-drawer:not(:hover) .app-item:nth-child(2) .app-icon-initial { animation-delay: 0.1s; } 
-        #right-sidebar-drawer:not(:hover) .app-item:nth-child(3) .app-icon-initial { animation-delay: 0.2s; } 
-        #right-sidebar-drawer:not(:hover) .app-item:nth-child(4) .app-icon-initial { animation-delay: 0.3s; } 
-        #right-sidebar-drawer:not(:hover) .app-item:nth-child(5) .app-icon-initial { animation-delay: 0.4s; } 
-        #right-sidebar-drawer:not(:hover) .app-item:nth-child(6) .app-icon-initial { animation-delay: 0.5s; } 
-        #right-sidebar-drawer:not(:hover) .app-item:nth-child(7) .app-icon-initial { animation-delay: 0.6s; } 
-        #right-sidebar-drawer:not(:hover) .app-item:nth-child(8) .app-icon-initial { animation-delay: 0.7s; } 
-        #right-sidebar-drawer:not(:hover) .app-item:nth-child(9) .app-icon-initial { animation-delay: 0.8s; } 
-        #right-sidebar-drawer:not(:hover) .app-item:nth-child(10) .app-icon-initial { animation-delay: 0.9s; } 
-        #right-sidebar-drawer:not(:hover) .app-item:nth-child(11) .app-icon-initial { animation-delay: 1.0s; } 
-        #right-sidebar-drawer:not(:hover) .app-item:nth-child(12) .app-icon-initial { animation-delay: 1.1s; } 
-        #right-sidebar-drawer:not(:hover) .app-item:nth-child(13) .app-icon-initial { animation-delay: 1.2s; } 
-        #right-sidebar-drawer:not(:hover) .app-item:nth-child(14) .app-icon-initial { animation-delay: 1.3s; } 
-        #right-sidebar-drawer:not(:hover) .app-item:nth-child(15) .app-icon-initial { animation-delay: 1.4s; } 
+        
+        .app-item.active .app-icon-initial {
+            color: var(--color-bg-primary); /* Teks icon gelap */
+            background-color: #AAAAAA; /* Warna agak gelap untuk status aktif */
+            animation: none !important; 
+            box-shadow: none;
+        }
         
         .app-item:hover .app-icon-initial {
             animation: none !important;
             transform: scale(1.1); 
-            box-shadow: 0 0 10px var(--color-accent-cyan);
+            box-shadow: 0 0 10px var(--color-accent); 
         }
         
-        /* Tombol Hamburger di Desktop disembunyikan */
-        #mobile-menu-button {
-             display: none; 
+        /* --- Elemen Loading Overlay (Dark Mode) --- */
+        #loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(18, 18, 18, 0.9); /* Latar belakang gelap */
+            backdrop-filter: blur(2px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 20; 
+            opacity: 1;
+            transition: opacity 0.3s ease-out;
+            pointer-events: none; 
+            visibility: hidden;
         }
-
-        /* MEDIA QUERY: Mobile (Mode Header) */
+        
+        #loading-overlay.visible {
+            visibility: visible;
+            pointer-events: auto;
+        }
+        
+        .loading-text {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--color-accent); /* Teks loading putih */
+            animation: pulse 1.5s infinite ease-in-out;
+        }
+        
+        /* MEDIA QUERY: Mobile (Dark Mode) */
         @media screen and (max-width: 768px) {
             
-            #app-container {
-                flex-direction: column; 
-            }
-            
-            /* --- Mobile Header (TAMPIL) --- */
             #mobile-header {
                 display: flex;
                 position: fixed; 
@@ -435,7 +483,7 @@
                 width: 100%;
                 height: var(--mobile-header-height);
                 background-color: var(--color-bg-sidebar); 
-                border-bottom: 1px solid var(--color-border-dark);
+                border-bottom: 1px solid var(--color-border-light); 
                 align-items: center;
                 padding: 0 10px;
                 box-sizing: border-box;
@@ -443,54 +491,49 @@
                 box-shadow: var(--shadow-heavy);
             }
             
-            /* Tombol Hamburger di Kiri (Order 1) */
+            /* --- Tombol Menu Mobile --- */
             #mobile-header #mobile-menu-button {
                 display: flex;
-                width: 35px;
+                width: auto; 
+                padding: 5px 15px; 
                 height: 35px;
-                background-color: var(--color-accent-cyan);
-                color: var(--color-bg-sidebar);
-                border-radius: 50%;
+                background-color: var(--color-accent); /* Aksen putih/terang */
+                color: var(--color-bg-primary); /* Teks gelap */
+                border-radius: 6px; 
                 border: none;
                 justify-content: center;
                 align-items: center;
                 font-size: 1.1em;
                 cursor: pointer;
                 transition: transform 0.3s, background-color 0.3s;
-                order: 1; /* Posisi di KIRI */
+                order: 1; 
                 margin-right: 15px;
                 box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
             }
             
             #mobile-header #mobile-menu-button.active {
-                background-color: #008C9E; 
-                transform: rotate(90deg);
+                background-color: #AAAAAA; /* Warna agak gelap untuk aktif */
+                transform: none; 
             }
-            
+
             .header-title {
                 font-size: 1.1em;
                 font-weight: 600;
                 order: 2; 
                 flex-grow: 1;
+                color: var(--color-text-primary);
             }
             
             .header-profile-image {
-                width: 35px;
-                height: 35px;
-                border-radius: 50%;
-                object-fit: cover;
-                border: 2px solid var(--color-accent-cyan);
-                order: 3; 
+                display: none; 
             }
-
-            /* --- MOBILE OVERLAY (Muncul di Mobile) --- */
+            
             #mobile-overlay.active {
                 display: block; 
                 opacity: 1;
-                pointer-events: auto; /* Aktifkan klik */
+                pointer-events: auto; 
             }
             
-            /* --- Iframe Wrapper (Mobile) --- */
             #iframe-wrapper {
                 padding-right: 0; 
                 margin-top: var(--mobile-header-height); 
@@ -499,68 +542,34 @@
                 width: 100%;
             }
             
-            /* --- Sidebar Menjadi Drawer Pop-up dari KANAN (PERUBAHAN UTAMA) --- */
             #right-sidebar-drawer {
-                position: fixed;
-                top: 0; 
-                right: -100%; /* Sembunyikan di luar layar KANAN */
+                right: -100%; 
                 left: auto; 
                 width: 70%; 
                 max-width: 300px;
                 height: 100%;
-                z-index: 40; /* Z-index tertinggi agar menutupi overlay */
-                transition: right 0.3s ease-in-out; /* Transisi menggunakan properti RIGHT */
+                z-index: 40; 
+                transition: right 0.3s ease-in-out; 
             }
             
             #right-sidebar-drawer.open-mobile {
-                right: 0; /* Tampilkan drawer dari kanan */
+                right: 0; 
             }
             
-            /* --- Perbaikan Kesulitan Klik Navigasi (PENTING) --- */
             .app-item {
-                 justify-content: flex-start; 
-                 padding: 12px 10px; /* Ditingkatkan untuk touch target yang lebih baik */
-                 position: relative; 
-                 z-index: 1; 
-                 cursor: pointer;
-                 transition: background-color 0.2s;
-            }
-
-            /* Styling di dalam Drawer Mobile */
-            .profile-header {
-                 display: flex; 
-                 padding: 20px;
-                 justify-content: flex-start;
-            }
-            
-            .app-grid {
-                 flex-direction: column; 
-                 padding: 10px;
-            }
-            
-            .app-name {
-                text-align: left; 
-                margin-left: 10px;
-                opacity: 1;
-                max-width: 100%;
-            }
-
-             .app-icon-initial {
-                width: 30px; 
-                height: 30px;
-                min-width: 30px;
-            }
-            
-             /* Sembunyikan tombol hamburger lama yang floating */
-             #mobile-menu-button:not(#mobile-header #mobile-menu-button) {
-                 display: none !important;
-             }
-
-             /* Pastikan efek hover desktop tidak merusak tampilan mobile */
-             #right-sidebar-drawer:hover .app-name {
+                 width: 100%; 
+                 margin-right: 0; 
                  opacity: 1;
-                 max-width: 100%; 
-             }
+                 /* Garis luar di mobile tetap putih/terang */
+                 border: 1px solid var(--color-accent); 
+            }
+
+            .app-item.active {
+                background-color: var(--color-accent);
+                color: var(--color-bg-primary);
+                border: 1px solid var(--color-accent); 
+            }
+
         }
     </style>
 </head>
@@ -569,14 +578,13 @@
     <div id="app-container">
         
         <div id="mobile-header">
-            <button id="mobile-menu-button">
-                <i class="fas fa-bars"></i>
-            </button>
-            <span class="header-title">Menu Utama</span>
-            <img src="logo.png" alt="Profile" class="header-profile-image">
+            <button id="mobile-menu-button">Menu</button>
+            <span class="header-title">Aplikasi Saya</span> 
         </div>
 
         <div id="mobile-overlay"></div> 
+        
+        <div id="sidebar-hover-area"></div> 
 
         <div id="iframe-wrapper">
             <iframe id="content-frame" title="Area Konten Aplikasi" src="about:blank">
@@ -584,21 +592,19 @@
             </iframe>
             
             <div id="loading-overlay">
-                <img src="logo.png" alt="Loading Profile" class="loading-profile-image">
+                <span class="loading-text">Memuat...</span>
             </div>
         </div>
 
         <div id="right-sidebar-drawer">
             <div class="profile-header">
-                 <img src="logo.png" alt="Foto Profil" class="profile-image" style="margin-right: 10px;">
-            </div>
+                 </div>
 
             <div class="app-grid" id="app-grid">
-                </div>
+                 </div>
         </div>
 
     </div>
 
 </body>
 </html>
-
