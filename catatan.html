@@ -131,13 +131,13 @@
         #menuButton {
             background: none; 
             border: none; 
-            color: black; /* Warna yang jelas */
+            color: black; 
             font-size: 1.5rem; 
             cursor: pointer; 
-            padding: 5px; /* Area klik yang nyaman */
+            padding: 5px; 
             line-height: 1; 
             transition: color 0.2s, background-color 0.2s; 
-            display: none; /* Sembunyikan secara default */
+            display: none; 
             border-radius: 4px;
         }
         #menuButton:hover {
@@ -335,6 +335,35 @@
             #editNoteTitle, #newNoteTitle { font-size: 1.5rem; }
             #editNoteContent, #newNoteContent { font-size: 1rem; }
         }
+        
+        /* --- TOAST NOTIFICATION STYLES (HITAM) --- */
+        #toastContainer {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 3000;
+            display: flex;
+            flex-direction: column-reverse; 
+            gap: 10px;
+            max-width: 300px;
+        }
+        .toast {
+            background-color: var(--accent-color); /* HITAM */
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+            transform: translateY(20px);
+            font-size: 0.9rem;
+            min-width: 200px;
+            text-align: center;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
     </style>
 </head>
 <body>
@@ -352,7 +381,7 @@
         <header class="header">
             <button id="menuButton" onclick="toggleSidebar(true)">☰</button>
             <h1 id="activeFolderHeader"></h1> 
-            <button id="addNoteButton" title="Tambah Catatan Baru" onclick="openAddNoteModal()">
+            <button id="addNoteButton" title="Tambah Catatan Baru (Shortcut: N)" onclick="openAddNoteModal()">
                  <svg viewBox="0 0 24 24"><path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" /></svg>
             </button>
         </header>
@@ -395,6 +424,8 @@
         </main>
     </div>
 
+    <div id="toastContainer"></div>
+
     <script>
         // --- 1. Konfigurasi Firebase Anda ---
         const firebaseConfig = {
@@ -432,13 +463,15 @@
         const editNoteId = document.getElementById('editNoteId');
         const editNoteTitle = document.getElementById('editNoteTitle');
         const editNoteContent = document.getElementById('editNoteContent');
-        const doneEditBtn = document.getElementById('doneEditBtn'); // Now Simpan button
+        const doneEditBtn = document.getElementById('doneEditBtn'); 
         const cancelEditBtn = document.getElementById('cancelEditBtn'); 
 
         const confirmationModal = document.getElementById('confirmationModal');
         const confirmationMessage = document.getElementById('confirmationMessage');
         const confirmOK = document.getElementById('confirmOK');
         const confirmCancel = document.getElementById('confirmCancel');
+        
+        const toastContainer = document.getElementById('toastContainer'); 
 
         const DEFAULT_FILTER_NAME = 'Semua Catatan';
         let currentFilter = DEFAULT_FILTER_NAME;
@@ -462,15 +495,9 @@
         }
 
         function updateHeaderTitle() {
-            // Menggunakan innerHTML dan menambahkan span dengan kelas 'active-header-chip'
             activeFolderHeader.innerHTML = `<span class="active-header-chip">${currentFilter}</span>`;
         }
 
-        /**
-         * Mengubah ISO string menjadi format tanggal/waktu yang lebih mudah dibaca (DD/MM/YYYY HH:MM).
-         * @param {string} isoString - Waktu dalam format ISO 8601 dari Firebase.
-         * @returns {string} Waktu yang sudah diformat atau string kosong jika tidak valid.
-         */
         function formatTimestamp(isoString) {
             if (!isoString) return '';
             try {
@@ -484,15 +511,34 @@
                     hour: '2-digit', 
                     minute: '2-digit' 
                 };
-                // Format: DD/MM/YYYY HH:MM
                 return date.toLocaleTimeString('id-ID', options);
             } catch (e) {
                 console.error("Gagal memformat timestamp:", e);
                 return '';
             }
         }
+        
+        // --- 4. Sistem Konfirmasi Manual & Toast ---
 
-        // --- 4. Sistem Konfirmasi Manual & Alert ---
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`; 
+            toast.textContent = message;
+
+            toastContainer.prepend(toast);
+
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+                toast.addEventListener('transitionend', () => {
+                    toast.remove();
+                });
+            }, 4000);
+        }
+
         function showConfirmation(message, onConfirm, onCancel = () => {}, isDestructive = true) {
             confirmationMessage.textContent = message;
 
@@ -532,26 +578,6 @@
             }
         };
 
-        function showAlert(message) {
-            showConfirmation(message, () => {}, () => {}, false);
-
-            confirmCancel.style.display = 'none';
-            confirmOK.textContent = 'TUTUP';
-
-            const originalOkHandler = confirmOK.onclick;
-
-            const tempOkHandler = () => {
-                confirmationModal.classList.remove('active');
-                confirmCancel.style.display = 'block';
-                confirmOK.textContent = 'OK';
-                confirmOK.onclick = originalOkHandler;
-                confirmOK.style.backgroundColor = 'var(--accent-color)';
-                confirmOK.onmouseover = () => confirmOK.style.backgroundColor = 'black';
-                confirmOK.onmouseout = () => confirmOK.style.backgroundColor = 'var(--accent-color)';
-            };
-
-            confirmOK.onclick = tempOkHandler;
-        }
 
         // --- 5. Fungsi Interaksi Sidebar & Folder ---
         window.toggleSidebar = function(show) {
@@ -575,9 +601,14 @@
                 foldersRef.child(newName).set(true)
                 .then(() => {
                     newFolderNameInput.value = '';
+                    showToast(`Folder '${newName}' berhasil dibuat.`, 'success'); 
+                })
+                .catch(error => {
+                    console.error("Gagal membuat folder:", error);
+                    showToast("Gagal membuat folder.", 'error'); 
                 });
             } else {
-                showAlert(`Nama folder tidak valid atau sudah ada.`);
+                showToast(`Nama folder tidak valid atau sudah ada.`, 'error'); 
             }
         };
 
@@ -605,8 +636,12 @@
                             if (currentFilter === folderName) {
                                 filterNotes(DEFAULT_FILTER_NAME);
                             }
+                            showToast(`Folder '${folderName}' berhasil dihapus.`, 'success'); 
                         })
-                        .catch(error => console.error("Gagal menghapus folder:", error));
+                        .catch(error => {
+                            console.error("Gagal menghapus folder:", error);
+                            showToast("Gagal menghapus folder.", 'error'); 
+                        });
                     });
                 }
             }, null, true);
@@ -665,7 +700,6 @@
             const noteData = allNotes[noteId];
             if (!noteData) return;
 
-            // Pastikan modal tambah tertutup
             addNoteModalOverlay.classList.remove('active');
             toggleSidebar(false);
 
@@ -690,11 +724,17 @@
             if (newTitle === "" && newContent === "") {
                  showConfirmation("Judul dan isi catatan kosong. Hapus catatan ini?", (confirmed) => {
                      if (confirmed) {
-                         database.ref('notes/' + noteId).remove();
-                         editModalOverlay.classList.remove('active');
+                         database.ref('notes/' + noteId).remove()
+                         .then(() => {
+                            editModalOverlay.classList.remove('active');
+                            showToast("Catatan berhasil dihapus.", 'success'); 
+                         })
+                         .catch(error => {
+                            console.error("Gagal menghapus catatan:", error);
+                            showToast("Gagal menghapus catatan.", 'error'); 
+                         });
                      }
                  }, () => {
-                    // Do nothing on cancel, modal stays open
                  }, true);
                  return;
             }
@@ -705,12 +745,16 @@
                 title: newTitle || "Catatan Tanpa Judul",
                 content: newContent,
                 folder: oldFolder,
-                timestamp: new Date().toISOString() // Update timestamp on save
+                timestamp: new Date().toISOString() 
             })
             .then(() => {
                 editModalOverlay.classList.remove('active');
+                showToast("Perubahan catatan berhasil disimpan!", 'success'); 
             })
-            .catch(error => console.error("Gagal menyimpan catatan:", error));
+            .catch(error => {
+                console.error("Gagal menyimpan catatan:", error);
+                showToast("Gagal menyimpan perubahan.", 'error'); 
+            });
         }
 
         // EVENT LISTENER MODAL EDIT
@@ -727,11 +771,11 @@
 
         // --- 7. Fungsi Tambah Catatan Baru (Modal Baru) ---
         window.openAddNoteModal = function() {
-            // Pastikan modal edit tertutup
+            if (editModalOverlay.classList.contains('active')) return;
+            
             editModalOverlay.classList.remove('active');
             toggleSidebar(false);
 
-            // Bersihkan input
             newNoteTitleInput.value = '';
             newNoteContentInput.value = '';
 
@@ -746,7 +790,7 @@
             const content = newNoteContentInput.value.trim();
 
             if (title === "" && content === "") {
-                showAlert("Judul dan isi catatan kosong. Simpan dibatalkan.");
+                showToast("Catatan kosong. Simpan dibatalkan.", 'error'); 
                 return;
             }
 
@@ -757,13 +801,16 @@
                 title: title || "Catatan Tanpa Judul",
                 content: content,
                 folder: finalFolder,
-                timestamp: currentTimestamp // Set initial timestamp
+                timestamp: currentTimestamp 
             })
             .then(() => {
-                // Tutup modal setelah simpan
                 addNoteModalOverlay.classList.remove('active');
+                showToast("Catatan baru berhasil disimpan!", 'success'); 
             })
-            .catch(error => console.error("Gagal menambahkan catatan baru:", error));
+            .catch(error => {
+                console.error("Gagal menambahkan catatan baru:", error);
+                showToast("Gagal menyimpan catatan baru.", 'error'); 
+            });
         }
 
         // Event Listener untuk Modal Tambah Baru
@@ -780,7 +827,13 @@
             showConfirmation("Yakin ingin menghapus catatan ini?", (confirmed) => {
                 if (confirmed) {
                     database.ref('notes/' + noteId).remove()
-                        .catch(error => console.error("Gagal menghapus catatan:", error));
+                        .then(() => {
+                            showToast("Catatan berhasil dihapus.", 'success'); 
+                        })
+                        .catch(error => {
+                            console.error("Gagal menghapus catatan:", error);
+                            showToast("Gagal menghapus catatan.", 'error'); 
+                        });
                 }
             }, null, true);
         }
@@ -790,7 +843,9 @@
 
             notesRef.child(noteId).update({
                 folder: folderValue,
-                timestamp: new Date().toISOString() // Update timestamp on move
+                timestamp: new Date().toISOString() 
+            })
+            .then(() => {
             })
             .catch(error => console.error("Gagal memindahkan catatan:", error));
         }
@@ -814,12 +869,10 @@
                 let shouldDisplay = false;
 
                 if (currentFilter === DEFAULT_FILTER_NAME) {
-                    // Tampilkan hanya jika TIDAK memiliki folder
                     if (!noteData.folder) {
                         shouldDisplay = true;
                     }
                 } else if (noteData.folder === currentFilter) {
-                    // Tampilkan jika cocok dengan nama folder yang sedang dipilih
                     shouldDisplay = true;
                 }
 
@@ -830,12 +883,10 @@
 
                     let folderInfo = '';
                     if (noteData.folder) {
-                        // Tampilkan hanya nama folder dengan background hitam
                         folderInfo = `<span class="folder-chip">${noteData.folder}</span>`;
                     }
                     
                     let footerContent = '';
-                    // Tampilkan footer jika ada folder ATAU waktu
                     if (folderInfo || timestampFormatted) {
                         footerContent = `
                             <div class="note-card-footer">
@@ -882,7 +933,8 @@
                         </button>
                         <h3 class="note-card-title">${linkedTitle}</h3>
                         <p class="note-card-content">${linkedContent}</p>
-                        ${footerContent} `;
+                        ${footerContent}
+                    `;
 
                     notesGrid.appendChild(card);
                 }
@@ -895,25 +947,69 @@
             renderNotes();
         });
 
-        // --- Quick Save (Ctrl+S / Cmd+S) Global ---
+
+        // --- 11. Shortcut Keyboard Global (N FIXED) ---
+        
+        function isInputFocused(element) {
+            if (!element) return false;
+            const tag = element.tagName.toLowerCase();
+            return tag === 'input' || tag === 'textarea' || element.isContentEditable;
+        }
+
         document.addEventListener('keydown', (e) => {
+            const isInput = isInputFocused(document.activeElement);
+            
+            // --- Shortcut Tambah Catatan (Hanya N) ---
+            if ((e.key === 'n' || e.key === 'N') && !isInput) {
+                
+                if (!editModalOverlay.classList.contains('active') && !addNoteModalOverlay.classList.contains('active')) {
+                    e.preventDefault(); 
+                    openAddNoteModal();
+                }
+                return;
+            }
+
+            // --- Shortcut Konfirmasi (Enter) di Modal Konfirmasi (Hapus) ---
+            if (confirmationModal.classList.contains('active') && e.key === 'Enter') {
+                e.preventDefault();
+                confirmOK.click(); 
+                return; 
+            }
+            
+            // Logika untuk Modal EDIT
             if (editModalOverlay.classList.contains('active')) {
+                // Ctrl/Cmd + S: Simpan
                 if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                    e.preventDefault();
-                    saveEditNote(); // Simpan melalui tombol
+                    e.preventDefault(); 
+                    saveEditNote(); 
                 }
+                // Escape: Batal
                 if (e.key === 'Escape') {
                     e.preventDefault();
-                    cancelEditBtn.click(); // Tutup melalui tombol Batal
+                    cancelEditBtn.click(); 
                 }
+                // Ctrl + Backspace: Batal (Tambahan untuk konsistensi)
+                if (e.ctrlKey && e.key === 'Backspace') {
+                    e.preventDefault();
+                    cancelEditBtn.click();
+                }
+
+            // Logika untuk Modal TAMBAH CATATAN BARU
             } else if (addNoteModalOverlay.classList.contains('active')) {
+                // Ctrl/Cmd + S: Simpan
                 if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                    e.preventDefault();
-                    saveNewNote(); // Simpan melalui tombol
+                    e.preventDefault(); 
+                    saveNewNote(); 
                 }
+                // Escape: Batal
                 if (e.key === 'Escape') {
                     e.preventDefault();
-                    cancelNewNoteBtn.click(); // Tutup melalui tombol Batal
+                    cancelNewNoteBtn.click(); 
+                }
+                // Ctrl + Backspace: Batal (Tutup Pop-up)
+                if (e.ctrlKey && e.key === 'Backspace') {
+                    e.preventDefault(); 
+                    cancelNewNoteBtn.click(); 
                 }
             }
         });
