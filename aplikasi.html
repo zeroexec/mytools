@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expandable Sidebar Dark Mode - Sidebar Melayang, Aksen Hitam</title>
+    <title>Expandable Sidebar Dark Mode - Sidebar Melayang, Aksen Cyan</title>
     
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -205,17 +205,18 @@
     </script>
     
     <style>
-        /* Variabel Warna DARK Mode (Aksen Hitam) */
+        /* Variabel Warna DARK Mode (Aksen Cyan) */
         :root {
-            --color-bg-primary: #121212; /* Background gelap utama */
-            --color-bg-sidebar: #1E1E1E; /* Background sidebar sedikit lebih terang */
-            --color-text-primary: #E0E0E0; /* Teks terang */
-            --color-text-secondary: #AAAAAA; /* Teks sekunder */
-            --color-accent: #FFFFFF; /* Putih/Terang sebagai aksen (Kontras dengan Dark Mode) */
+            --color-bg-primary: #121212; 
+            --color-bg-sidebar: #1E1E1E; 
+            --color-text-primary: #E0E0E0; 
+            --color-text-secondary: #AAAAAA; 
+            --color-accent: #00BCD4; /* Cyan sebagai aksen */
             
-            --color-border-light: #333333; /* Border gelap */
-            --color-hover-bg: #292929; /* Hover gelap */
-            --color-initial-bg: #444444; /* Latar belakang inisial gelap */
+            --color-border-light: #333333; 
+            --color-hover-bg: #292929; 
+            --color-initial-bg: #444444; 
+            --color-active-darker: #008C9E; /* Darker cyan untuk active state */
 
             --sidebar-width-closed: 0; 
             --sidebar-width-expanded: 220px; 
@@ -223,16 +224,16 @@
             --hover-trigger-width: 5px; 
             --padding-vertical: 5px;
             
-            --shadow-heavy: 0 4px 12px rgba(0, 0, 0, 0.5); /* Shadow lebih gelap */
+            --shadow-heavy: 0 4px 12px rgba(0, 0, 0, 0.5); 
             
             --mobile-header-height: 55px;
         }
 
-        /* === KEYFRAMES UNTUK ANIMASI LOADING (Aksen Putih) === */
+        /* === KEYFRAMES UNTUK ANIMASI LOADING (Aksen Cyan) === */
         @keyframes pulse-bright {
             0%, 100% { opacity: 0.7; box-shadow: none; }
             2% { opacity: 1; box-shadow: 0 0 10px var(--color-accent); }
-            15% { opacity: 0.7; box-shadow: 0 0 5px rgba(255, 255, 255, 0.5); }
+            15% { opacity: 0.7; box-shadow: 0 0 5px rgba(0, 188, 212, 0.5); }
         }
         
         @keyframes pulse {
@@ -253,7 +254,6 @@
             overflow: hidden; 
         }
         
-        /* Scrollbar styling (tetap hidden) */
         #right-sidebar-drawer::-webkit-scrollbar,
         body::-webkit-scrollbar {
             display: none; 
@@ -285,7 +285,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.7); /* Lebih gelap di Dark Mode */
+            background-color: rgba(0, 0, 0, 0.7); 
             z-index: 39; 
             opacity: 0;
             transition: opacity 0.3s ease-in-out;
@@ -304,7 +304,7 @@
             cursor: pointer;
         }
         
-        /* --- Iframe Wrapper (Tidak Ada Perubahan Lebar) --- */
+        /* --- Iframe Wrapper (Melayang) --- */
         #iframe-wrapper {
             flex-grow: 1; 
             height: 100%;
@@ -369,7 +369,7 @@
             width: calc(var(--sidebar-width-expanded) - 10px); 
             box-sizing: border-box;
             
-            /* --- GARIS LUAR PUTIH untuk yang TIDAK AKTIF (Aksen Dark Mode) --- */
+            /* --- GARIS LUAR CYAN untuk yang TIDAK AKTIF --- */
             border: 1px solid var(--color-accent); 
             
             margin-right: calc(-1 * var(--sidebar-width-expanded)); 
@@ -382,10 +382,10 @@
              border-color: var(--color-accent); 
         }
         
-        /* Hapus border untuk item yang sedang aktif */
+        /* Aktif: Background Cyan, Teks Terang */
         .app-item.active {
-            background-color: var(--color-accent); /* Putih/Terang */
-            color: var(--color-bg-primary); /* Teks gelap */
+            background-color: var(--color-accent); 
+            color: var(--color-bg-sidebar); /* Teks terang di atas Cyan */
             border: 1px solid var(--color-accent); 
         }
         
@@ -412,12 +412,13 @@
             max-width: 100%; 
         }
 
+        /* --- app-icon-initial (Aksen Cyan) --- */
         .app-icon-initial {
             width: var(--icon-size); 
             height: var(--icon-size);
             min-width: var(--icon-size);
             background-color: var(--color-initial-bg); 
-            color: var(--color-accent); 
+            color: var(--color-accent); /* Teks Cyan */
             border-radius: 6px; 
             display: flex;
             justify-content: center;
@@ -429,8 +430,8 @@
         }
         
         .app-item.active .app-icon-initial {
-            color: var(--color-bg-primary); /* Teks icon gelap */
-            background-color: #AAAAAA; /* Warna agak gelap untuk status aktif */
+            color: var(--color-bg-sidebar); /* Teks icon terang */
+            background-color: var(--color-active-darker); /* Cyan lebih gelap */
             animation: none !important; 
             box-shadow: none;
         }
@@ -448,7 +449,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(18, 18, 18, 0.9); /* Latar belakang gelap */
+            background-color: rgba(18, 18, 18, 0.9); 
             backdrop-filter: blur(2px);
             display: flex;
             justify-content: center;
@@ -468,11 +469,11 @@
         .loading-text {
             font-size: 1.5em;
             font-weight: bold;
-            color: var(--color-accent); /* Teks loading putih */
+            color: var(--color-accent); /* Teks loading Cyan */
             animation: pulse 1.5s infinite ease-in-out;
         }
         
-        /* MEDIA QUERY: Mobile (Dark Mode) */
+        /* MEDIA QUERY: Mobile (Dark Mode, Aksen Cyan) */
         @media screen and (max-width: 768px) {
             
             #mobile-header {
@@ -497,8 +498,8 @@
                 width: auto; 
                 padding: 5px 15px; 
                 height: 35px;
-                background-color: var(--color-accent); /* Aksen putih/terang */
-                color: var(--color-bg-primary); /* Teks gelap */
+                background-color: var(--color-accent); /* Aksen Cyan */
+                color: var(--color-bg-primary); /* Teks gelap/primary */
                 border-radius: 6px; 
                 border: none;
                 justify-content: center;
@@ -512,7 +513,7 @@
             }
             
             #mobile-header #mobile-menu-button.active {
-                background-color: #AAAAAA; /* Warna agak gelap untuk aktif */
+                background-color: var(--color-active-darker); /* Cyan lebih gelap untuk aktif */
                 transform: none; 
             }
 
@@ -560,13 +561,12 @@
                  width: 100%; 
                  margin-right: 0; 
                  opacity: 1;
-                 /* Garis luar di mobile tetap putih/terang */
                  border: 1px solid var(--color-accent); 
             }
 
             .app-item.active {
                 background-color: var(--color-accent);
-                color: var(--color-bg-primary);
+                color: var(--color-bg-sidebar);
                 border: 1px solid var(--color-accent); 
             }
 
