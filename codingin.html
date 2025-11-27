@@ -64,7 +64,35 @@
         padding: 0 15px;
         border-bottom: 1px solid #4b5563;
         justify-content: flex-end; /* Pindahkan ke kanan */
+        gap: 8px; /* Tambahkan jarak antar tombol */
     }
+    /* Style dasar untuk semua tombol aksi (Pilih Semua, Copy, Hapus) */
+    .action-button {
+        background-color: #4b5563; /* Abu-abu sedikit terang */
+        color: white;
+        border: none;
+        padding: 5px 10px; 
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 13px;
+        transition: background-color 0.2s;
+        display: flex; 
+        align-items: center;
+        justify-content: center;
+        width: 34px; 
+        height: 30px;
+    }
+    .action-button:hover {
+        background-color: #6b7280; /* Sedikit lebih terang saat hover */
+    }
+    .action-button svg {
+        width: 20px; 
+        height: 20px;
+        fill: currentColor; 
+    }
+
+    /* Style khusus untuk tombol Preview */
     #preview-button {
         background-color: darkcyan; /* Hijau (Emerald-500) */
         color: white;
@@ -96,6 +124,22 @@
 <div id="toast-notification"></div>
 
 <div id="toolbar">
+    <button id="select-all-button" class="action-button" title="Pilih Semua (Ctrl+A)">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path fill-rule="evenodd" d="M11.47 1.72a.75.75 0 011.06 0l7.5 7.5a.75.75 0 01-1.06 1.06L12 3.812 4.03 10.28a.75.75 0 01-1.06-1.06l7.5-7.5zM12.75 6a.75.75 0 00-1.5 0v3.75c0 .414-.336.75-.75.75H7.5a.75.75 0 00-.75.75v3c0 .414.336.75.75.75h3a.75.75 0 00.75.75v3.75a.75.75 0 001.5 0V17.25a.75.75 0 00-.75-.75h-3a.75.75 0 00-.75-.75v-3H11a.75.75 0 00.75-.75V6zM15 15.75a.75.75 0 01.75-.75h2.25a.75.75 0 010 1.5H15.75a.75.75 0 01-.75-.75zM15 12a.75.75 0 01.75-.75h2.25a.75.75 0 010 1.5H15.75a.75.75 0 01-.75-.75zM15 8.25a.75.75 0 01.75-.75h2.25a.75.75 0 010 1.5H15.75a.75.75 0 01-.75-.75z" clip-rule="evenodd" />
+        </svg>
+    </button>
+    <button id="copy-button" class="action-button" title="Salin (Ctrl+C)">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path fill-rule="evenodd" d="M15.75 1.5a6.002 6.002 0 012.013 11.968l-3.078-3.079a6.002 6.002 0 01-8.913-3.793l3.793-3.793a6.002 6.002 0 013.795-8.914zm-4.72 2.872a4.502 4.502 0 016.364 6.364l-3.794 3.794a4.502 4.502 0 01-6.364-6.364l3.794-3.794zM12 17.25a5.25 5.25 0 00-5.25 5.25h10.5a5.25 5.25 0 00-5.25-5.25zM21 21.75c0 .414.336.75.75.75s.75-.336.75-.75V19.5a1.5 1.5 0 00-1.5-1.5h-1.5a1.5 1.5 0 00-1.5 1.5v2.25c0 .414.336.75.75.75s.75-.336.75-.75V19.5h1.5v2.25z" clip-rule="evenodd" />
+        </svg>
+    </button>
+    <button id="delete-button" class="action-button" title="Hapus Semua (Ctrl+D)">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.5 4.478v.227a48.84 48.84 0 013.313 7.027 1.5 1.5 0 010 1.056 48.108 48.108 0 01-3.327 7.027v.227c-2.345 0-4.773-.556-7.075-1.638-.163-.075-.327-.15-.494-.228a.75.75 0 01-.005-.724c.065-.17.142-.34.23-.509a.75.75 0 01.71-.34c.265.025.53-.027.785-.152A44.026 44.026 0 0012 18a44.026 44.026 0 00-3.308-1.576c.255.125.52.177.785.152a.75.75 0 01.71.34c.088.169.165.339.23.509a.75.75 0 01-.005.724c-.167.078-.33.153-.494.228C7.773 19.144 5.345 19.699 3 19.699v-.227c.484-1.996 1.405-3.951 2.766-5.656a.75.75 0 011.082-.242c.162.1.28.243.344.407a47.41 47.41 0 001.385 2.115c.343.354.767.545 1.2.555.438.01.868-.17 1.21-.525.405-.418.665-.953.774-1.516.14-.72.117-1.44-.067-2.146.012-.008.02-.016.03-.024.129-.103.243-.217.348-.337.07-.08.136-.162.203-.244a.75.75 0 011.08-.24c1.36 1.705 2.28 3.66 2.764 5.656zM8 8.25c0-.414.336-.75.75-.75h6.5a.75.75 0 010 1.5h-6.5A.75.75 0 018 8.25zM11.25 10.5a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5h-1.5a.75.75 0 01-.75-.75z" clip-rule="evenodd" />
+        </svg>
+    </button>
+
     <button id="preview-button" title="Preview di Tab Baru (Ctrl+Q) - Realtime">
         
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
@@ -197,6 +241,14 @@ const previewAction = (editor) => {
     }
 };
 
+// --- Fungsi untuk Aksi Editor (Pilih Semua, Copy, Hapus) ---
+const editorAction = (editor, actionId, actionName) => {
+    // Jalankan perintah Monaco Editor
+    // Perintah Copy dan SelectAll akan berfungsi karena dipicu oleh klik
+    editor.trigger('toolbar', actionId, null); 
+    showToast(`${actionName} berhasil!`, 'success');
+};
+
 
 // --- Load Monaco setelah window load ---
 window.addEventListener('load', () => {
@@ -214,13 +266,10 @@ window.addEventListener('load', () => {
         });
 
         // 🟢 PERUBAHAN UTAMA: Real-time Update Listener
-        // Gunakan debounce untuk mencegah pembaruan yang terlalu sering (misalnya setiap kali tombol ditekan)
         let updateTimeout;
         editor.onDidChangeModelContent(() => {
-            // Hapus timeout sebelumnya jika ada
             clearTimeout(updateTimeout);
             
-            // Set timeout baru: tunggu 300ms setelah user berhenti mengetik
             updateTimeout = setTimeout(() => {
                 const code = editor.getValue();
                 runPreviewInNewTab(code);
@@ -253,9 +302,25 @@ window.addEventListener('load', () => {
         
         // --- Event Listener untuk Tombol Preview ---
         document.getElementById('preview-button').addEventListener('click', boundPreviewAction);
+        
+        // 🟢 Event Listener untuk Tombol Aksi yang Berfungsi
+        document.getElementById('select-all-button').addEventListener('click', () => editorAction(editor, 'editor.action.selectAll', 'Pilih Semua'));
+        document.getElementById('copy-button').addEventListener('click', () => editorAction(editor, 'editor.action.clipboard.copy', 'Salin'));
+        
+        // Perintah Hapus/Clear All
+        document.getElementById('delete-button').addEventListener('click', () => { 
+            editor.setValue(''); // Mengosongkan editor secara langsung
+            showToast('Semua kode telah dihapus 🗑️', 'success');
+        });
 
         // --- Keyboard Shortcut (Ctrl + Q) for Preview ---
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyQ, boundPreviewAction, '');
+        
+        // Keyboard Shortcut untuk Hapus Semua (Ctrl+D)
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyD, () => { 
+            editor.setValue(''); 
+            showToast('Semua kode telah dihapus 🗑️', 'success');
+        }, '');
 
     });
 });
